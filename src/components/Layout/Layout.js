@@ -15,7 +15,8 @@ import {
   Save,
   Download,
   Upload,
-  Plus
+  Plus,
+  Zap
 } from 'lucide-react';
 import useStore from '../../store/useStore';
 import toast from 'react-hot-toast';
@@ -23,7 +24,7 @@ import toast from 'react-hot-toast';
 const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const { currentProject, exportProject, importProject, addProject } = useStore();
+  const { currentProject, exportProject, importProject, addProject, settings } = useStore();
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: BookOpen },
@@ -81,6 +82,45 @@ const Layout = ({ children }) => {
       }
     };
     input.click();
+  };
+
+  // Componente para mostrar o status da IA
+  const AIStatusIndicator = () => {
+    const currentProvider = settings?.defaultAIProvider;
+    const providerConfig = settings?.aiProviders?.[currentProvider];
+    
+    if (!currentProvider || !providerConfig?.apiKey) {
+      return (
+        <div className="flex items-center px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600">
+          <Zap className="h-4 w-4 mr-1 text-gray-400" />
+          <span>IA não configurada</span>
+        </div>
+      );
+    }
+
+    const providerNames = {
+      openai: 'OpenAI',
+      anthropic: 'Anthropic',
+      google: 'Google AI',
+      groq: 'Groq'
+    };
+
+    const providerColors = {
+      openai: 'bg-green-100 text-green-800',
+      anthropic: 'bg-orange-100 text-orange-800',
+      google: 'bg-blue-100 text-blue-800',
+      groq: 'bg-purple-100 text-purple-800'
+    };
+
+    return (
+      <div className={`flex items-center px-3 py-1 rounded-full text-sm ${providerColors[currentProvider] || 'bg-gray-100 text-gray-800'}`}>
+        <Zap className="h-4 w-4 mr-1" />
+        <span className="font-medium">{providerNames[currentProvider] || currentProvider}</span>
+        {providerConfig.defaultModel && (
+          <span className="ml-1 opacity-75">• {providerConfig.defaultModel}</span>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -172,6 +212,7 @@ const Layout = ({ children }) => {
             </div>
 
             <div className="flex items-center space-x-4">
+              <AIStatusIndicator />
               {currentProject && (
                 <button
                   onClick={() => toast.success('Projeto salvo!')}
