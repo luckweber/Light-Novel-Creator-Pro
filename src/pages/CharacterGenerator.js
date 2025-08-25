@@ -22,6 +22,9 @@ import {
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import toast from 'react-hot-toast';
+import { AIService, AI_PROMPTS } from '../utils/aiProviders';
+import AIIntegration from '../components/AI/AIIntegration';
+import AICharacterGenModal from '../components/character/AICharacterGenModal';
 
 const CharacterGenerator = () => {
   const { 
@@ -29,6 +32,7 @@ const CharacterGenerator = () => {
     addCharacter, 
     updateCharacter, 
     deleteCharacter, 
+    settings,
     setSelectedCharacter,
     selectedCharacter 
   } = useStore();
@@ -38,6 +42,7 @@ const CharacterGenerator = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showAIGenModal, setShowAIGenModal] = useState(false);
 
   const [characterForm, setCharacterForm] = useState({
     name: '',
@@ -129,25 +134,74 @@ const CharacterGenerator = () => {
     setIsGenerating(true);
     
     try {
-      // Simulate AI generation
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const activeProvider = settings.aiProviders[settings.defaultAIProvider];
+      if (!activeProvider || !activeProvider.apiKey) {
+        throw new Error('Provedor de IA não configurado corretamente.');
+      }
       
-      const aiResponses = {
-        appearance: 'Alta estatura, cabelos escuros e olhos penetrantes que revelam uma determinação inabalável. Sua postura ereta e movimentos graciosos denotam confiança e experiência.',
-        personality: 'Determinado e focado, mas com um lado compassivo que emerge em momentos de vulnerabilidade. Tendência a assumir responsabilidades e proteger os outros.',
-        background: 'Criado em circunstâncias difíceis, desenvolveu habilidades de sobrevivência desde cedo. Sua história é marcada por perdas e conquistas que moldaram seu caráter.',
-        goals: 'Busca encontrar seu lugar no mundo e proteger aqueles que ama. Tem um objetivo maior que ainda não foi completamente revelado.',
-        conflicts: 'Luta contra expectativas externas e suas próprias dúvidas internas. Precisa equilibrar responsabilidades pessoais com missões maiores.',
-        relationships: 'Mantém poucos amigos próximos, mas é leal aos que conquistam sua confiança. Tem uma relação complexa com figuras de autoridade.',
-        abilities: 'Habilidades físicas excepcionais, inteligência estratégica e uma intuição aguçada. Possui conhecimentos em diversas áreas.',
-        weaknesses: 'Tendência a se isolar emocionalmente e assumir muita responsabilidade. Às vezes é teimoso demais para pedir ajuda.',
-        arc: 'Transformação de um indivíduo solitário para alguém que aprende a confiar e trabalhar em equipe, mantendo sua essência.'
-      };
+      const aiService = new AIService(settings.defaultAIProvider, activeProvider.apiKey, {
+        model: activeProvider.defaultModel,
+        temperature: activeProvider.temperature,
+        maxTokens: activeProvider.maxTokens
+      });
 
-      handleFormChange(field, aiResponses[field] || 'Conteúdo gerado com AI');
-      toast.success(`${field} gerado com AI!`);
+      const basePrompt = `Para um personagem de light novel chamado "${characterForm.name || 'um novo personagem'}", gere uma descrição para o seguinte campo: ${field}.`;
+      const contextPrompt = `Contexto: ${JSON.stringify({name: characterForm.name, role: characterForm.role, personality: characterForm.personality})}`;
+      const fullPrompt = `${basePrompt}\n${contextPrompt}`;
+
+      const result = await aiService.generateText(fullPrompt);
+
+      handleFormChange(field, result);
+      toast.success(`${field} gerado com sucesso!`);
     } catch (error) {
-      toast.error('Erro ao gerar com AI');
+      toast.error(`Erro ao gerar com IA: ${error.message}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const generateFullCharacter = async (prompt, role) => {
+    setIsGenerating(true);
+    setShowAIGenModal(false);
+    const toastId = toast.loading('Gerando personagem completo com IA...');
+
+    try {
+      const activeProvider = settings.aiProviders[settings.defaultAIProvider];
+      if (!activeProvider || !activeProvider.apiKey) {
+        throw new Error('Provedor de IA não configurado corretamente.');
+      }
+      
+      const aiService = new AIService(settings.defaultAIProvider, activeProvider.apiKey, {
+        model: activeProvider.defaultModel,
+        temperature: activeProvider.temperature,
+        maxTokens: activeProvider.maxTokens
+      });
+
+      let fullPrompt = AI_PROMPTS.character.basic;
+      if (prompt) {
+        fullPrompt += `\n\nInstruções adicionais do usuário: ${prompt}`;
+      }
+      if (role && role !== 'any') {
+        fullPrompt += `\nO personagem deve ter o papel de: ${role}`;
+      }
+
+      const result = await aiService.generateText(fullPrompt);
+      
+      // Extrair o JSON da resposta
+      const jsonMatch = result.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error("A IA não retornou um JSON válido.");
+      }
+      const jsonString = jsonMatch[0];
+      const parsedResult = JSON.parse(jsonString);
+      
+      setCharacterForm(prev => ({ ...prev, ...parsedResult, role: role !== 'any' ? role : (parsedResult.role || 'protagonist') }));
+      setShowForm(true); // Abrir o formulário com os dados preenchidos
+      setEditingCharacter(null); // Garantir que estamos em modo de criação
+      toast.success('Personagem gerado com sucesso!', { id: toastId });
+
+    } catch (error) {
+      toast.error(`Erro ao gerar personagem: ${error.message}`, { id: toastId });
     } finally {
       setIsGenerating(false);
     }
@@ -221,11 +275,21 @@ const CharacterGenerator = () => {
             Importar
           </button>
           <button
-            onClick={() => setShowForm(!showForm)}
+            onClick={() => {
+              setEditingCharacter(null);
+              setShowForm(true);
+            }}
             className="btn-primary flex items-center"
           >
             <Plus className="mr-2 h-4 w-4" />
             Novo Personagem
+          </button>
+          <button
+            onClick={() => setShowAIGenModal(true)}
+            className="btn-secondary flex items-center bg-purple-600 text-white hover:bg-purple-700"
+          >
+            <Sparkles className="mr-2 h-4 w-4" />
+            Criar com IA
           </button>
         </div>
       </div>
@@ -259,6 +323,14 @@ const CharacterGenerator = () => {
           </select>
         </div>
       </div>
+
+      {showAIGenModal && (
+        <AICharacterGenModal
+          onClose={() => setShowAIGenModal(false)}
+          onGenerate={generateFullCharacter}
+          isGenerating={isGenerating}
+        />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Character Form */}
@@ -408,7 +480,6 @@ const CharacterGenerator = () => {
                 <div
                   key={character.id}
                   className="card hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => setSelectedCharacter(character)}
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div>

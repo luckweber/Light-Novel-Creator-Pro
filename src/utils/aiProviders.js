@@ -44,11 +44,10 @@ export const AI_PROVIDERS = {
   
   google: {
     name: 'Google AI',
-    baseUrl: 'https://generativelanguage.googleapis.com/v1',
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
     models: {
       'gemini-1.5-pro': { name: 'Gemini 1.5 Pro', maxTokens: 2000000, cost: 'Médio' },
-      'gemini-1.5-flash': { name: 'Gemini 1.5 Flash', maxTokens: 1000000, cost: 'Baixo' },
-      'gemini-pro': { name: 'Gemini Pro', maxTokens: 32000, cost: 'Baixo' }
+      'gemini-1.5-flash': { name: 'Gemini 1.5 Flash', maxTokens: 1000000, cost: 'Baixo' }
     },
     keyFormat: 'AI...',
     website: 'https://ai.google.dev',
@@ -66,10 +65,10 @@ export const AI_PROVIDERS = {
     name: 'Groq',
     baseUrl: 'https://api.groq.com/openai/v1',
     models: {
-      'llama3-70b-8192': { name: 'Llama 3 70B', maxTokens: 8192, cost: 'Gratuito' },
-      'llama3-8b-8192': { name: 'Llama 3 8B', maxTokens: 8192, cost: 'Gratuito' },
-      'mixtral-8x7b-32768': { name: 'Mixtral 8x7B', maxTokens: 32768, cost: 'Gratuito' },
-      'gemma-7b-it': { name: 'Gemma 7B', maxTokens: 8192, cost: 'Gratuito' }
+      'llama3-70b-8192': { name: 'Llama 3 70B', id: 'llama3-70b-8192', maxTokens: 8192, cost: 'Gratuito' },
+      'llama3-8b-8192': { name: 'Llama 3 8B', id: 'llama3-8b-8192', maxTokens: 8192, cost: 'Gratuito' },
+      'mixtral-8x7b-32768': { name: 'Mixtral 8x7B', id: 'mixtral-8x7b-32768', maxTokens: 32768, cost: 'Gratuito' },
+      'gemma-7b-it': { name: 'Gemma 7B', id: 'gemma-7b-it', maxTokens: 8192, cost: 'Gratuito' }
     },
     keyFormat: 'gsk_...',
     website: 'https://console.groq.com',
@@ -130,6 +129,10 @@ export class AIService {
   }
 
   async callOpenAICompatible(prompt, options) {
+    const modelId = this.provider === 'groq' 
+      ? AI_PROVIDERS.groq.models[options.model]?.id || options.model
+      : options.model;
+
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -137,7 +140,7 @@ export class AIService {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: options.model || AI_PROVIDERS[this.provider].models[Object.keys(AI_PROVIDERS[this.provider].models)[0]],
+        model: modelId,
         messages: [
           { role: 'user', content: prompt }
         ],
