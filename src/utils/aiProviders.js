@@ -1,5 +1,3 @@
-import toast from 'react-hot-toast';
-
 // Configurações dos provedores de IA
 export const AI_PROVIDERS = {
   openai: {
@@ -366,7 +364,7 @@ export const validateApiKey = (provider, apiKey) => {
     return { valid: false, message: 'Provedor não suportado' };
   }
 
-  const keyFormat = providerConfig.keyFormat;
+  // const keyFormat = providerConfig.keyFormat;
   
   // Validações básicas baseadas no formato esperado
   switch (provider) {
@@ -396,6 +394,8 @@ export const validateApiKey = (provider, apiKey) => {
         return { valid: false, message: 'API Key da Groq deve começar com "gsk_"' };
       }
       break;
+    default:
+      break;
   }
 
   return { valid: true, message: 'Formato da API Key válido' };
@@ -414,23 +414,22 @@ export const getBestModelForTask = (provider, task) => {
       if (provider === 'openai') return 'gpt-4o';
       if (provider === 'anthropic') return 'claude-3-5-sonnet-20241022';
       if (provider === 'google') return 'gemini-1.5-pro';
-      if (provider === 'groq') return 'llama3-70b-8192';
-      break;
+      return 'llama3-70b-8192';
       
     case 'fast_generation':
       // Priorizar velocidade
       if (provider === 'openai') return 'gpt-3.5-turbo';
       if (provider === 'anthropic') return 'claude-3-haiku-20240307';
       if (provider === 'google') return 'gemini-1.5-flash';
-      if (provider === 'groq') return 'llama3-8b-8192';
-      break;
+      return 'llama3-8b-8192';
       
     case 'long_context':
       // Priorizar contexto longo
       if (provider === 'anthropic') return 'claude-3-5-sonnet-20241022';
       if (provider === 'google') return 'gemini-1.5-pro';
       if (provider === 'groq') return 'mixtral-8x7b-32768';
-      if (provider === 'openai') return 'gpt-4-turbo';
+      return 'gpt-4-turbo';
+    default:
       break;
   }
   

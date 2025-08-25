@@ -17,15 +17,33 @@ const useStore = create(
       worldData: {
         name: '',
         description: '',
+        genre: '',
+        techLevel: '',
+        
+        // Geografia
         locations: [],
-        cultures: [],
+        regions: [],
+        climates: [],
+        resources: [],
+        
+        // Culturas
+        peoples: [],
+        languages: [],
         religions: [],
-        magic: [],
-        technology: [],
-        history: [],
-        politics: [],
-        economy: [],
-        geography: []
+        traditions: [],
+
+        // Sistemas
+        magicSystems: [],
+        technologies: [],
+        governments: [],
+        economies: [],
+
+        // História
+        events: [],
+        eras: [],
+        
+        // Relações
+        relationships: [],
       },
       
       // Personagens
@@ -195,8 +213,32 @@ const useStore = create(
         }
       })),
       
+      // Generic CRUD actions for world data
+      addWorldItem: (category, item) => set((state) => ({
+        worldData: {
+          ...state.worldData,
+          [category]: [...(state.worldData[category] || []), { ...item, id: Date.now(), createdAt: new Date().toISOString() }]
+        }
+      })),
+
+      updateWorldItem: (category, id, updates) => set((state) => ({
+        worldData: {
+          ...state.worldData,
+          [category]: (state.worldData[category] || []).map(item =>
+            item.id === id ? { ...item, ...updates } : item
+          )
+        }
+      })),
+
+      deleteWorldItem: (category, id) => set((state) => ({
+        worldData: {
+          ...state.worldData,
+          [category]: (state.worldData[category] || []).filter(item => item.id !== id)
+        }
+      })),
+
       addCharacter: (character) => set((state) => ({
-        characters: [...state.characters, { ...character, id: Date.now() }]
+        characters: [...state.characters, { ...character, id: Date.now(), createdAt: new Date().toISOString() }]
       })),
       
       updateCharacter: (id, updates) => set((state) => ({
