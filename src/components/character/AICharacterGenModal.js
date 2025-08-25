@@ -4,10 +4,12 @@ import { X, Sparkles } from 'lucide-react';
 const AICharacterGenModal = ({
   onClose,
   onGenerate,
-  isGenerating
+  isGenerating,
+  regions // Adicionar regions
 }) => {
   const [prompt, setPrompt] = useState('');
   const [characterType, setCharacterType] = useState('protagonist');
+  const [region, setRegion] = useState(''); // Adicionar estado para região
 
   const characterTypes = [
     { value: 'protagonist', label: 'Protagonista' },
@@ -19,7 +21,7 @@ const AICharacterGenModal = ({
   ];
 
   const handleGenerate = () => {
-    onGenerate(prompt, characterType);
+    onGenerate(prompt, characterType, region); // Passar região
   };
 
   return (
@@ -47,21 +49,41 @@ const AICharacterGenModal = ({
             <p className="text-xs text-gray-500 mt-1">Deixe em branco para um personagem completamente aleatório.</p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tipo de Personagem
-            </label>
-            <select
-              value={characterType}
-              onChange={(e) => setCharacterType(e.target.value)}
-              className="input-field"
-            >
-              {characterTypes.map(type => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
-            </select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tipo de Personagem
+              </label>
+              <select
+                value={characterType}
+                onChange={(e) => setCharacterType(e.target.value)}
+                className="input-field"
+              >
+                {characterTypes.map(type => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Região de Origem (Opcional)
+              </label>
+              <select
+                value={region}
+                onChange={(e) => setRegion(e.target.value)}
+                className="input-field"
+                disabled={!regions || regions.length === 0}
+              >
+                <option value="">Aleatória</option>
+                {regions && regions.map(r => (
+                  <option key={r.id} value={r.name}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 

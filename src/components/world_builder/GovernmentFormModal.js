@@ -1,12 +1,13 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { toast } from "react-toastify";
-import { X } from "lucide-react";
+import { X, Sparkles, Trash2 } from "lucide-react";
 import { governmentTypes } from "../../data/worldBuilderConstants";
 
 const GovernmentFormModal = ({
     government,
     onClose,
     onSave,
+    onDelete,
     aiProvider,
     isGenerating,
     onGenerateWithAI
@@ -192,13 +193,31 @@ const GovernmentFormModal = ({
               </div>
             </div>
             
-            <div className="flex justify-end space-x-3 mt-8 pt-6 border-t border-gray-200">
-              <button type="button" onClick={onClose} className="btn-outline">
-                Cancelar
-              </button>
-              <button type="submit" className="btn-primary">
-                {government ? 'Atualizar' : 'Criar'} Sistema Político
-              </button>
+            <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
+              <div>
+                {government && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm(`Tem certeza que deseja excluir "${government.name}"?`)) {
+                        onDelete(government.id);
+                      }
+                    }}
+                    className="btn-danger"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Deletar
+                  </button>
+                )}
+              </div>
+              <div className="flex space-x-3">
+                <button type="button" onClick={onClose} className="btn-outline">
+                  Cancelar
+                </button>
+                <button type="submit" className="btn-primary">
+                  {government ? 'Atualizar' : 'Criar'} Sistema Político
+                </button>
+              </div>
             </div>
           </form>
         </div>

@@ -3215,14 +3215,8 @@ Formate como JSON:
         <MagicSystemFormModal
           system={editingItem}
           onClose={() => setFormType(null)}
-          onSave={(systemData) => {
-            if (editingItem) {
-              updateWorldItem('magicSystems', editingItem.id, systemData);
-            } else {
-              addWorldItem('magicSystems', systemData);
-            }
-            setFormType(null);
-          }}
+          onSave={(data) => handleSave('magicSystems', data)}
+          onDelete={(id) => handleDelete('magicSystems', id)}
           aiProvider={aiProvider}
           isGenerating={isGenerating}
           onGenerateWithAI={generateWithAI}
@@ -3233,15 +3227,8 @@ Formate como JSON:
         <EventFormModal
           event={editingItem}
           onClose={() => setFormType(null)}
-          onSave={(eventData) => {
-            if (editingItem) {
-              updateWorldItem('events', editingItem.id, eventData);
-            } else {
-              addWorldItem('events', eventData);
-            }
-            setFormType(null);
-            setEditingItem(null);
-          }}
+          onSave={(data) => handleSave('events', data)}
+          onDelete={(id) => handleDelete('events', id)}
           aiProvider={aiProvider}
           isGenerating={isGenerating}
           onGenerateWithAI={generateWithAI}
@@ -3300,15 +3287,8 @@ Formate como JSON:
         <LandmarkFormModal
           landmark={editingItem}
           onClose={() => setFormType(null)}
-          onSave={(landmarkData) => {
-            if (editingItem) {
-              updateWorldItem('landmarks', editingItem.id, landmarkData);
-            } else {
-              addWorldItem('landmarks', landmarkData);
-            }
-            setFormType(null);
-            setEditingItem(null);
-          }}
+          onSave={(data) => handleSave('landmarks', data)}
+          onDelete={(id) => handleDelete('landmarks', id)}
           aiProvider={aiProvider}
           isGenerating={isGenerating}
           onGenerateWithAI={generateWithAI}
@@ -3319,15 +3299,8 @@ Formate como JSON:
         <ResourceFormModal
           resource={editingItem}
           onClose={() => setFormType(null)}
-          onSave={(resourceData) => {
-            if (editingItem) {
-              updateWorldItem('resources', editingItem.id, resourceData);
-            } else {
-              addWorldItem('resources', resourceData);
-            }
-            setFormType(null);
-            setEditingItem(null);
-          }}
+          onSave={(data) => handleSave('resources', data)}
+          onDelete={(id) => handleDelete('resources', id)}
           aiProvider={aiProvider}
           isGenerating={isGenerating}
           onGenerateWithAI={generateWithAI}
@@ -3338,15 +3311,8 @@ Formate como JSON:
         <TechnologyFormModal
           technology={editingItem}
           onClose={() => setFormType(null)}
-          onSave={(data) => {
-            if (editingItem) {
-              updateWorldItem('technologies', editingItem.id, data);
-            } else {
-              addWorldItem('technologies', data);
-            }
-            setFormType(null);
-            setEditingItem(null);
-          }}
+          onSave={(data) => handleSave('technologies', data)}
+          onDelete={(id) => handleDelete('technologies', id)}
           aiProvider={aiProvider}
           isGenerating={isGenerating}
           onGenerateWithAI={generateWithAI}
@@ -3357,15 +3323,8 @@ Formate como JSON:
         <GovernmentFormModal
           government={editingItem}
           onClose={() => setFormType(null)}
-          onSave={(data) => {
-            if (editingItem) {
-              updateWorldItem('governments', editingItem.id, data);
-            } else {
-              addWorldItem('governments', data);
-            }
-            setFormType(null);
-            setEditingItem(null);
-          }}
+          onSave={(data) => handleSave('governments', data)}
+          onDelete={(id) => handleDelete('governments', id)}
           aiProvider={aiProvider}
           isGenerating={isGenerating}
           onGenerateWithAI={generateWithAI}
@@ -3376,15 +3335,8 @@ Formate como JSON:
         <EconomyFormModal
           economy={editingItem}
           onClose={() => setFormType(null)}
-          onSave={(data) => {
-            if (editingItem) {
-              updateWorldItem('economies', editingItem.id, data);
-            } else {
-              addWorldItem('economies', data);
-            }
-            setFormType(null);
-            setEditingItem(null);
-          }}
+          onSave={(data) => handleSave('economies', data)}
+          onDelete={(id) => handleDelete('economies', id)}
           aiProvider={aiProvider}
           isGenerating={isGenerating}
           onGenerateWithAI={generateWithAI}

@@ -242,13 +242,15 @@ export class AIService {
 // Prompts pré-definidos para diferentes tipos de geração
 export const AI_PROMPTS = {
   character: {
-    basic: `Crie um personagem para uma light novel com as seguintes características:
-- Nome único e interessante
-- Idade e aparência física detalhada
-- Personalidade complexa com virtudes e defeitos
-- Histórico pessoal interessante
-- Objetivos e motivações claras
-- Habilidades ou talentos especiais
+    basic: `Crie um personagem para uma light novel usando o CONTEXTO DO MUNDO fornecido. O personagem deve ser coeso com o universo descrito.
+
+Considere as seguintes características:
+- Nome único e interessante, apropriado para a cultura local (se aplicável).
+- Idade e aparência física detalhada, influenciada pela etnia ou povo da região de origem.
+- Personalidade complexa com virtudes e defeitos.
+- Histórico pessoal interessante, conectado à história ou eventos do mundo.
+- Objetivos e motivações claras.
+- Habilidades ou talentos especiais, consistentes com os sistemas de magia ou tecnologia do mundo.
 
 Formato da resposta em JSON:
 {
@@ -261,7 +263,7 @@ Formato da resposta em JSON:
   "abilities": ""
 }`,
     
-    detailed: `Crie um personagem profundamente desenvolvido para uma light novel:
+    detailed: `Crie um personagem profundamente desenvolvido para uma light novel, usando o CONTEXTO DO MUNDO fornecido:
 
 INFORMAÇÕES BÁSICAS:
 - Nome completo (com significado)
@@ -334,25 +336,28 @@ Formate como roteiro com nomes dos personagens.`
   },
 
   lore: {
-    legend: `Crie uma lenda ou mito para o mundo da light novel:
-- Título da lenda
-- Personagens míticos envolvidos
-- Eventos sobrenaturais
-- Lição moral ou significado
-- Como afeta o mundo atual
-- Variações regionais da história
+    legend: `Crie uma lenda para uma light novel baseado no CONTEXTO DO MUNDO fornecido. A lenda deve ser coesa com o universo.
 
-Formate como JSON estruturado.`,
+Responda APENAS com o código JSON, seguindo esta estrutura exata:
+{
+  "name": "Título da Lenda",
+  "description": "A história completa da lenda.",
+  "origin": "Onde ou como a lenda surgiu.",
+  "significance": "Qual a importância ou lição moral da lenda.",
+  "characters": "Personagens míticos envolvidos.",
+  "locations": "Locais onde a lenda acontece."
+}`,
     
-    artifact: `Desenvolva um artefato mágico ou tecnológico:
-- Nome e aparência
-- Origem e criador
-- Poderes ou funcionalidades
-- Limitações ou custos
-- História de possuidores anteriores
-- Importância para a trama atual
+    artifact: `Desenvolva um artefato para uma light novel, baseado no CONTEXTO DO MUNDO.
 
-Formate como JSON estruturado.`
+Responda APENAS com o código JSON, seguindo esta estrutura exata:
+{
+  "name": "Nome do Artefato",
+  "description": "Aparência e história do artefato.",
+  "origin": "Quem o criou e como.",
+  "significance": "Qual sua importância para a história.",
+  "effects": "Quais seus poderes, habilidades e custos/limitações."
+}`
   }
 };
 

@@ -1,11 +1,12 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { toast } from "react-toastify";
-import { X } from "lucide-react";
+import { X, Sparkles, Trash2 } from "lucide-react";
   
 const MagicSystemFormModal = ({
   system,
   onClose,
   onSave,
+  onDelete,
   aiProvider,
   isGenerating,
   onGenerateWithAI
@@ -102,9 +103,31 @@ const MagicSystemFormModal = ({
             className="textarea-field"
             placeholder="Limitações e custos"
           />
-          <div className="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200">
-            <button type="button" onClick={onClose} className="btn-outline">Cancelar</button>
-            <button type="submit" className="btn-primary">{system ? 'Atualizar' : 'Adicionar'}</button>
+          <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
+            <div>
+              {system && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(`Tem certeza que deseja excluir "${system.name}"?`)) {
+                      onDelete(system.id);
+                    }
+                  }}
+                  className="btn-danger"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Deletar
+                </button>
+              )}
+            </div>
+            <div className="flex space-x-3">
+              <button type="button" onClick={onClose} className="btn-outline">
+                Cancelar
+              </button>
+              <button type="submit" className="btn-primary">
+                {system ? 'Atualizar' : 'Criar'} Sistema
+              </button>
+            </div>
           </div>
         </form>
       </div>

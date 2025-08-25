@@ -24,11 +24,15 @@ import {
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import toast from 'react-hot-toast';
+import { AIService, AI_PROMPTS } from '../utils/aiProviders';
+import AILoreGenModal from '../components/lore/AILoreGenModal';
 
 const LoreGenerator = () => {
   const { 
     loreData, 
-    addLoreItem 
+    addLoreItem,
+    worldData, // Adicionar worldData
+    settings // Adicionar settings
   } = useStore();
 
   const [activeTab, setActiveTab] = useState('myths');
@@ -36,6 +40,7 @@ const LoreGenerator = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showAIGenModal, setShowAIGenModal] = useState(false); // Novo estado
 
   const [loreForm, setLoreForm] = useState({
     name: '',
@@ -130,75 +135,120 @@ const LoreGenerator = () => {
     }
   };
 
-  const generateWithAI = async (field) => {
-    setIsGenerating(true);
+  // Função para extrair dados de texto da IA (similar ao CharacterGenerator)
+  const extractLoreFromText = (text, loreType) => {
+    const data = {};
     
+    // Extrai o nome/título - procura por padrões comuns
+    const titlePatterns = [
+      /\*\*([^*]+)\*\*\s*\n/,
+      /"([^"]+)"/,
+      /Mito[^:]*:\s*([^\n]+)/i,
+      /Lenda[^:]*:\s*([^\n]+)/i,
+      /Artefato[^:]*:\s*([^\n]+)/i,
+      /^([^\n]+)/m // Primeira linha como fallback
+    ];
+    
+    for (const pattern of titlePatterns) {
+      const match = text.match(pattern);
+      if (match && match[1] && match[1].trim().length > 3) {
+        data.name = match[1].trim().replace(/[*"]/g, ''); // Remove caracteres especiais
+        break;
+      }
+    }
+    
+    // Se não encontrou nome, usa um genérico baseado no tipo
+    if (!data.name) {
+      const typeNames = {
+        myths: 'Mito Gerado por IA',
+        legends: 'Lenda Gerada por IA',
+        artifacts: 'Artefato Gerado por IA',
+        prophecies: 'Profecia Gerada por IA',
+        rituals: 'Ritual Gerado por IA',
+        customs: 'Costume Gerado por IA'
+      };
+      data.name = typeNames[loreType] || 'Item de Lore Gerado por IA';
+    }
+    
+    // Usa todo o texto como descrição, limpando formatação
+    data.description = text
+      .replace(/\*\*[^*]+\*\*/g, '') // Remove títulos em bold
+      .replace(/#+\s*[^\n]+/g, '') // Remove headers
+      .replace(/\n\s*\n/g, '\n') // Remove linhas vazias extras
+      .trim();
+    
+    // Campos padrão para diferentes tipos de lore
+    if (loreType === 'artifacts') {
+      data.origin = 'Origem a ser descoberta';
+      data.effects = 'Efeitos mágicos ou especiais';
+    } else {
+      data.origin = 'Tradição oral antiga';
+      data.significance = 'Importante para a cultura e história local';
+    }
+    
+    return data;
+  };
+
+  const generateFullLoreItem = async (prompt, loreType) => {
+    setIsGenerating(true);
+    setShowAIGenModal(false);
+    const toastId = toast.loading(`Gerando ${loreType}...`);
+
     try {
-      // Simulate AI generation
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const activeProvider = settings.aiProviders[settings.defaultAIProvider];
+      if (!activeProvider || !activeProvider.apiKey) {
+        throw new Error('Provedor de IA não configurado corretamente.');
+      }
       
-      const aiResponses = {
-        myths: {
-          name: 'O Nascimento das Estrelas',
-          description: 'Conta a história de como os deuses antigos criaram as estrelas para iluminar o mundo durante a noite, cada uma representando uma alma que se sacrificou pelo bem comum.',
-          origin: 'Passado de geração em geração pelos anciões das tribos nômades, este mito explica a origem do céu noturno.',
-          significance: 'Representa o sacrifício pelo bem comum e a importância da luz em tempos de escuridão.',
-          characters: 'Os Deuses Antigos, os Sacrificados, os Guardiões da Noite',
-          locations: 'O Céu Primordial, o Vale dos Sacrifícios, o Templo das Estrelas',
-          effects: 'Influencia rituais noturnos e crenças sobre sacrifício e renascimento.'
-        },
-        legends: {
-          name: 'A Espada do Primeiro Rei',
-          description: 'Uma espada lendária forjada com metal celestial que só pode ser empunhada por um verdadeiro herdeiro do trono.',
-          origin: 'Forjada pelos ferreiros celestiais para o primeiro rei que unificou as terras.',
-          significance: 'Símbolo de legitimidade real e poder divino sobre as terras.',
-          characters: 'O Primeiro Rei, os Ferreiros Celestiais, os Guardiões da Espada',
-          locations: 'A Forja Celestial, o Trono Real, a Cripta dos Reis',
-          effects: 'Concede poder divino ao portador legítimo e protege contra usurpadores.'
-        },
-        prophecies: {
-          name: 'A Profecia do Eclipse',
-          description: 'Quando o sol e a lua se encontrarem no céu, um escolhido surgirá para enfrentar a escuridão que ameaça o mundo.',
-          origin: 'Revelada por uma vidente em transe durante um eclipse total.',
-          significance: 'Prediz o surgimento de um herói destinado a salvar o mundo.',
-          characters: 'O Escolhido, a Vidente, os Guardiões da Profecia',
-          locations: 'O Templo da Vidente, o Vale do Eclipse, o Altar dos Destinos',
-          effects: 'Mobiliza forças para encontrar e proteger o escolhido.'
-        },
-        artifacts: {
-          name: 'O Orbe da Verdade',
-          description: 'Um orbe cristalino que revela a verdade oculta e expõe mentiras quando tocado.',
-          origin: 'Criado pelos sábios antigos para julgar disputas e descobrir traidores.',
-          significance: 'Instrumento de justiça e revelação da verdade.',
-          characters: 'Os Sábios Antigos, os Guardiões da Verdade, os Julgadores',
-          locations: 'A Câmara dos Julgamentos, o Santuário da Verdade, o Tribunal Real',
-          effects: 'Revela mentiras, expõe traidores e garante justiça imparcial.'
-        },
-        rituals: {
-          name: 'O Ritual da Renovação',
-          description: 'Cerimônia anual que renova a energia vital da terra e garante boas colheitas.',
-          origin: 'Desenvolvido pelos primeiros agricultores para garantir a fertilidade da terra.',
-          significance: 'Mantém o equilíbrio entre a humanidade e a natureza.',
-          characters: 'Os Sacerdotes da Terra, os Agricultores, os Guardiões da Natureza',
-          locations: 'O Círculo Sagrado, os Campos de Colheita, o Altar da Terra',
-          effects: 'Renova a fertilidade da terra e fortalece a conexão com a natureza.'
-        },
-        customs: {
-          name: 'A Festa dos Ancestrais',
-          description: 'Celebração anual onde os vivos honram os mortos e buscam sua orientação.',
-          origin: 'Tradição antiga que mantém a conexão entre gerações passadas e presentes.',
-          significance: 'Preserva a memória dos ancestrais e fortalece os laços familiares.',
-          characters: 'Os Ancestrais, os Familiares, os Guardiões da Memória',
-          locations: 'O Cemitério Sagrado, o Salão dos Ancestrais, o Altar da Memória',
-          effects: 'Fortalece laços familiares e preserva tradições ancestrais.'
-        }
+      const aiService = new AIService(settings.defaultAIProvider, activeProvider.apiKey, {
+        model: activeProvider.defaultModel,
+        temperature: activeProvider.temperature,
+        maxTokens: activeProvider.maxTokens
+      });
+
+      const worldContext = {
+        name: worldData.name,
+        genre: worldData.genre,
+        regions: worldData.regions.map(r => r.name),
+        peoples: worldData.peoples.map(p => p.name),
+        characters: useStore.getState().characters.map(c => c.name),
+        magicSystems: worldData.magicSystems.map(m => m.name)
       };
 
-      const response = aiResponses[activeTab]?.[field] || 'Conteúdo gerado com AI';
-      handleFormChange(field, response);
-      toast.success(`${field} gerado com AI!`);
+      let fullPrompt = AI_PROMPTS.lore[loreType] || `Crie um item de lore do tipo "${loreType}".`;
+      fullPrompt += `\n\nCONTEXTO DO MUNDO:\n${JSON.stringify(worldContext, null, 2)}`;
+      
+      if (prompt) {
+        fullPrompt += `\n\nInstruções adicionais do usuário: ${prompt}`;
+      }
+
+      const result = await aiService.generateText(fullPrompt);
+      
+      // Extrair o JSON da resposta (mesma lógica do CharacterGenerator)
+      const jsonMatch = result.match(/\{[\s\S]*\}/);
+      let parsedResult;
+      
+      if (jsonMatch) {
+        try {
+          const jsonString = jsonMatch[0];
+          parsedResult = JSON.parse(jsonString);
+        } catch (e) {
+          // Se falhar no JSON, usa fallback
+          parsedResult = extractLoreFromText(result, loreType);
+        }
+      } else {
+        // Se não encontrar JSON, usa fallback
+        parsedResult = extractLoreFromText(result, loreType);
+      }
+      
+      setLoreForm(prev => ({ ...prev, ...parsedResult }));
+      setActiveTab(loreType);
+      setShowForm(true);
+      setEditingItem(null);
+      toast.success('Item de lore gerado com sucesso!', { id: toastId });
+
     } catch (error) {
-      toast.error('Erro ao gerar com AI');
+      toast.error(`Erro ao gerar lore: ${error.message}`, { id: toastId });
     } finally {
       setIsGenerating(false);
     }
@@ -220,13 +270,22 @@ const LoreGenerator = () => {
             Crie mitos, lendas, profecias e elementos de lore para seu mundo
           </p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="btn-primary flex items-center"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Item
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setShowAIGenModal(true)}
+            className="btn-secondary flex items-center bg-purple-600 text-white hover:bg-purple-700"
+          >
+            <Sparkles className="mr-2 h-4 w-4" />
+            Criar com IA
+          </button>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="btn-primary flex items-center"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Item
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -303,7 +362,7 @@ const LoreGenerator = () => {
                       </label>
                       <button
                         type="button"
-                        onClick={() => generateWithAI(field)}
+                        onClick={() => generateFullLoreItem('', activeTab)}
                         disabled={isGenerating}
                         className="text-primary-600 hover:text-primary-700 text-sm flex items-center"
                       >
@@ -428,6 +487,15 @@ const LoreGenerator = () => {
           )}
         </div>
       </div>
+
+      {showAIGenModal && (
+        <AILoreGenModal
+          onClose={() => setShowAIGenModal(false)}
+          onGenerate={generateFullLoreItem}
+          isGenerating={isGenerating}
+          loreTypes={tabs}
+        />
+      )}
     </div>
   );
 };

@@ -33,6 +33,7 @@ const CharacterGenerator = () => {
     updateCharacter, 
     deleteCharacter, 
     settings,
+    worldData, // Adicionar worldData
     setSelectedCharacter,
     selectedCharacter 
   } = useStore();
@@ -160,7 +161,7 @@ const CharacterGenerator = () => {
     }
   };
 
-  const generateFullCharacter = async (prompt, role) => {
+  const generateFullCharacter = async (prompt, role, region) => { // Adicionar region
     setIsGenerating(true);
     setShowAIGenModal(false);
     const toastId = toast.loading('Gerando personagem completo com IA...');
@@ -177,23 +178,51 @@ const CharacterGenerator = () => {
         maxTokens: activeProvider.maxTokens
       });
 
+      // Criar Dossiê do Mundo
+      const worldContext = {
+        name: worldData.name,
+        genre: worldData.genre,
+        regions: worldData.regions.map(r => r.name),
+        peoples: worldData.peoples.map(p => p.name),
+        magicSystems: worldData.magicSystems.map(m => m.name),
+        technologies: worldData.technologies.map(t => t.name)
+      };
+
       let fullPrompt = AI_PROMPTS.character.basic;
+      fullPrompt += `\n\nCONTEXTO DO MUNDO:\n${JSON.stringify(worldContext, null, 2)}`;
+      
       if (prompt) {
         fullPrompt += `\n\nInstruções adicionais do usuário: ${prompt}`;
       }
       if (role && role !== 'any') {
         fullPrompt += `\nO personagem deve ter o papel de: ${role}`;
       }
+      if (region) {
+        fullPrompt += `\nO personagem é originário da região de: ${region}. Use isso para influenciar sua aparência, cultura e história.`;
+      }
 
       const result = await aiService.generateText(fullPrompt);
       
-      // Extrair o JSON da resposta
-      const jsonMatch = result.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
+      // Extrair o JSON da resposta - apenas o primeiro bloco JSON válido
+      const jsonMatch = result.match(/\{[\s\S]*?\}/);
+      let parsedResult;
+      
+      if (jsonMatch) {
+        try {
+          const jsonString = jsonMatch[0];
+          parsedResult = JSON.parse(jsonString);
+        } catch (e) {
+          // Se o primeiro match falhar, tenta encontrar um JSON mais específico
+          const betterMatch = result.match(/\{\s*"name"[\s\S]*?\}/);
+          if (betterMatch) {
+            parsedResult = JSON.parse(betterMatch[0]);
+          } else {
+            throw new Error("A IA não retornou um JSON válido.");
+          }
+        }
+      } else {
         throw new Error("A IA não retornou um JSON válido.");
       }
-      const jsonString = jsonMatch[0];
-      const parsedResult = JSON.parse(jsonString);
       
       setCharacterForm(prev => ({ ...prev, ...parsedResult, role: role !== 'any' ? role : (parsedResult.role || 'protagonist') }));
       setShowForm(true); // Abrir o formulário com os dados preenchidos
@@ -329,6 +358,7 @@ const CharacterGenerator = () => {
           onClose={() => setShowAIGenModal(false)}
           onGenerate={generateFullCharacter}
           isGenerating={isGenerating}
+          regions={worldData?.regions || []}
         />
       )}
 
