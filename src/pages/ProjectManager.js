@@ -31,8 +31,14 @@ const ProjectManager = () => {
     updateProject, 
     deleteProject, 
     setCurrentProject,
-    currentProject 
+    currentProject,
+    restoreSelectedProject
   } = useStore();
+
+  // Restaurar projeto selecionado ao carregar
+  React.useEffect(() => {
+    restoreSelectedProject();
+  }, [restoreSelectedProject]);
 
   const [showForm, setShowForm] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
@@ -216,6 +222,14 @@ const ProjectManager = () => {
           <p className="text-gray-600 mt-2">
             Gerencie todos os seus projetos de light novel
           </p>
+          {currentProject && (
+            <div className="flex items-center mt-2 p-2 bg-primary-50 border border-primary-200 rounded-lg">
+              <div className="w-2 h-2 bg-primary-600 rounded-full mr-2"></div>
+              <span className="text-sm font-medium text-primary-800">
+                Projeto Ativo: {currentProject.name}
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex items-center space-x-2">
           <button
@@ -419,10 +433,15 @@ const ProjectManager = () => {
               return (
                 <div
                   key={project.id}
-                  className={`card hover:shadow-md transition-shadow ${
-                    isCurrentProject ? 'ring-2 ring-primary-500' : ''
+                  className={`card hover:shadow-md transition-shadow relative ${
+                    isCurrentProject ? 'ring-2 ring-primary-500 bg-primary-50' : ''
                   }`}
                 >
+                  {isCurrentProject && (
+                    <div className="absolute top-2 right-2">
+                      <div className="w-3 h-3 bg-primary-600 rounded-full animate-pulse"></div>
+                    </div>
+                  )}
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold text-gray-900">
@@ -444,8 +463,12 @@ const ProjectManager = () => {
                     <div className="flex items-center space-x-1">
                       <button
                         onClick={() => handleSelectProject(project)}
-                        className="p-1 text-gray-400 hover:text-primary-600"
-                        title="Selecionar Projeto"
+                        className={`p-1 ${
+                          isCurrentProject 
+                            ? 'text-primary-600 bg-primary-100 rounded' 
+                            : 'text-gray-400 hover:text-primary-600'
+                        }`}
+                        title={isCurrentProject ? "Projeto Ativo" : "Selecionar Projeto"}
                       >
                         <Eye className="h-4 w-4" />
                       </button>

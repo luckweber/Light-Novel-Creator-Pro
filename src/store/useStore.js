@@ -96,27 +96,7 @@ const useStore = create(
       aiSettings: {
         model: 'gpt-3.5-turbo',
         temperature: 0.7,
-        maxTokens: 1000
-      },
-      
-      // Configurações
-      settings: {
-        // Geral
-        theme: 'light',
-        language: 'pt-BR',
-        timezone: 'America/Sao_Paulo',
-        notifications: true,
-        autoSave: true,
-        autoSaveInterval: 30,
-        undoHistorySize: 50,
-        analytics: false,
-        spellCheck: true,
-        
-        // AI
-        defaultAIProvider: 'openai',
-        aiTimeout: 30,
-        autoSuggestions: false,
-        autoRetry: true,
+        maxTokens: 1000,
         aiProviders: {
           openai: {
             apiKey: '',
@@ -154,7 +134,28 @@ const useStore = create(
             maxTokens: 2000,
             enabled: false
           }
-        },
+        }
+      },
+      
+      // Configurações
+      settings: {
+        // Geral
+        theme: 'light',
+        language: 'pt-BR',
+        timezone: 'America/Sao_Paulo',
+        notifications: true,
+        autoSave: true,
+        autoSaveInterval: 30,
+        undoHistorySize: 50,
+        analytics: false,
+        spellCheck: true,
+        
+        // AI
+        defaultAIProvider: 'openai',
+        aiTimeout: 30,
+        autoSuggestions: false,
+        autoRetry: true,
+        autoLoadLastConversation: true,
         
         // Editor
         fontFamily: 'serif',
@@ -202,7 +203,26 @@ const useStore = create(
       },
       
       // Actions
-      setCurrentProject: (project) => set({ currentProject: project }),
+      setCurrentProject: (project) => {
+        set({ currentProject: project });
+        // Salvar o ID do projeto selecionado no localStorage
+        if (project) {
+          localStorage.setItem('selectedProjectId', project.id);
+        } else {
+          localStorage.removeItem('selectedProjectId');
+        }
+      },
+      
+      // Restaurar projeto selecionado
+      restoreSelectedProject: () => {
+        const selectedProjectId = localStorage.getItem('selectedProjectId');
+        if (selectedProjectId) {
+          const project = get().projects.find(p => p.id === parseInt(selectedProjectId));
+          if (project) {
+            set({ currentProject: project });
+          }
+        }
+      },
       
       addProject: (project) => set((state) => ({
         projects: [...state.projects, { ...project, id: Date.now(), createdAt: new Date().toISOString() }]
@@ -410,11 +430,19 @@ const useStore = create(
         }
       })),
       
+      updateLoreData: (updates) => set((state) => ({
+        loreData: { ...state.loreData, ...updates }
+      })),
+      
       addNarrativeItem: (category, item) => set((state) => ({
         narrativeData: {
           ...state.narrativeData,
           [category]: [...state.narrativeData[category], { ...item, id: Date.now() }]
         }
+      })),
+      
+      updateNarrativeData: (updates) => set((state) => ({
+        narrativeData: { ...state.narrativeData, ...updates }
       })),
       
       addAIConversation: (conversation) => set((state) => ({

@@ -32,7 +32,12 @@ const Layout = ({ children }) => {
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
   const location = useLocation();
   const projectDropdownRef = useRef(null);
-  const { currentProject, projects, setCurrentProject, exportProject, importProject, addProject, settings } = useStore();
+  const { currentProject, projects, setCurrentProject, restoreSelectedProject, exportProject, importProject, addProject, settings } = useStore();
+
+  // Restaurar projeto selecionado ao carregar
+  useEffect(() => {
+    restoreSelectedProject();
+  }, [restoreSelectedProject]);
 
   // Fechar dropdown quando clicar fora
   useEffect(() => {
