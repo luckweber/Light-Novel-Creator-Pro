@@ -348,6 +348,8 @@ const useStore = create(
         characters: state.characters.map(c => c.id === id ? { ...c, ...updates } : c)
       })),
       
+      updateCharacters: (characters) => set({ characters }),
+      
       deleteCharacter: (id) => set((state) => ({
         characters: state.characters.filter(c => c.id !== id)
       })),

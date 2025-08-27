@@ -10,13 +10,19 @@ import {
   ArrowRight,
   Target,
   TrendingUp,
-  Flame
+  Flame,
+  AlertTriangle,
+  Book
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import AIIntegration from '../components/AI/AIIntegration';
+import ConsistencyChecker from '../components/editor/ConsistencyChecker';
+import NovelReader from '../components/editor/NovelReader';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [showConsistencyChecker, setShowConsistencyChecker] = React.useState(false);
+  const [showNovelReader, setShowNovelReader] = React.useState(false);
   const { 
     currentProject, 
     projects, 
@@ -233,6 +239,34 @@ const Dashboard = () => {
       {/* AI Integration Status */}
       <AIIntegration onSettingsClick={() => navigate('/settings')} />
 
+      {/* Test Consistency Checker */}
+      <div className="card">
+        <h3 className="text-lg font-semibold text-foreground mb-4">
+          Teste do Sistema de Feedback
+        </h3>
+        <button
+          onClick={() => setShowConsistencyChecker(true)}
+          className="btn-primary flex items-center"
+        >
+          <AlertTriangle className="mr-2 h-4 w-4" />
+          Testar Feedback Light Novel
+        </button>
+      </div>
+
+      {/* Novel Reader */}
+      <div className="card">
+        <h3 className="text-lg font-semibold text-foreground mb-4">
+          Leitor de Light Novel
+        </h3>
+        <button
+          onClick={() => setShowNovelReader(true)}
+          className="btn-primary flex items-center"
+        >
+          <Book className="mr-2 h-4 w-4" />
+          Abrir Leitor Virtual
+        </button>
+      </div>
+
       {/* Quick Actions */}
       <div className="card">
         <h3 className="text-lg font-semibold text-foreground mb-4">
@@ -338,6 +372,16 @@ const Dashboard = () => {
           Ele pode ajudar com desenvolvimento de personagens, enredos e descrições de cenários.
         </p>
       </div>
+
+      {/* Modal de Verificador de Consistência */}
+      {showConsistencyChecker && (
+        <ConsistencyChecker onClose={() => setShowConsistencyChecker(false)} />
+      )}
+
+      {/* Modal de Leitor de Light Novel */}
+      {showNovelReader && (
+        <NovelReader onClose={() => setShowNovelReader(false)} />
+      )}
     </div>
   );
 };

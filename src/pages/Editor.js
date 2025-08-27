@@ -12,7 +12,13 @@ import {
   Clock,
   Sparkles,
   BarChart3,
-  X
+  X,
+  AlertTriangle,
+  Book,
+  MoreHorizontal,
+  Settings,
+  Zap,
+  CheckCircle
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import useNotifications from '../hooks/useNotifications';
@@ -25,6 +31,8 @@ import ChapterNavigator from '../components/editor/ChapterNavigator';
 import ProgressSummary from '../components/editor/ProgressSummary';
 import AdvancedAnalytics from '../components/analytics/AdvancedAnalytics';
 import BackupManager from '../components/backup/BackupManager';
+import ConsistencyChecker from '../components/editor/ConsistencyChecker';
+import NovelReader from '../components/editor/NovelReader';
 
 const Editor = () => {
   const { 
@@ -56,6 +64,9 @@ const Editor = () => {
   const [showChapterNav, setShowChapterNav] = useState(true);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showBackupManager, setShowBackupManager] = useState(false);
+  const [showConsistencyChecker, setShowConsistencyChecker] = useState(false);
+  const [showNovelReader, setShowNovelReader] = useState(false);
+  const [showToolsDropdown, setShowToolsDropdown] = useState(false);
   const [sessionStartTime, setSessionStartTime] = useState(Date.now());
   const quillRef = useRef(null);
   const autoSaveTimeoutRef = useRef(null);
@@ -180,6 +191,20 @@ const Editor = () => {
     const timer = setTimeout(applyEditorStyles, 100);
     return () => clearTimeout(timer);
   }, [editorContent]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showToolsDropdown && !event.target.closest('.relative')) {
+        setShowToolsDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showToolsDropdown]);
 
   // Função para selecionar capítulo
   const handleChapterSelect = useCallback((volume, chapter) => {
@@ -499,6 +524,7 @@ const Editor = () => {
           </div>
           
           <div className="flex items-center space-x-2">
+            {/* Botões Principais */}
             <button
               onClick={handleManualSave}
               className="btn-primary flex items-center"
@@ -527,27 +553,74 @@ const Editor = () => {
               {isPreview ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
               {isPreview ? 'Editar' : 'Visualizar'}
             </button>
-            <button
-              onClick={() => setShowChapterNav(!showChapterNav)}
-              className="btn-outline flex items-center"
-            >
-              <BookOpen className="mr-2 h-4 w-4" />
-              Capítulos
-            </button>
-            <button
-              onClick={() => setShowAnalytics(!showAnalytics)}
-              className="btn-outline flex items-center"
-            >
-              <BarChart3 className="mr-2 h-4 w-4" />
-              Analytics
-            </button>
-            <button
-              onClick={() => setShowBackupManager(true)}
-              className="btn-outline flex items-center"
-            >
-              <Save className="mr-2 h-4 w-4" />
-              Backups
-            </button>
+
+            {/* Dropdown de Ferramentas */}
+            <div className="relative">
+              <button
+                onClick={() => setShowToolsDropdown(!showToolsDropdown)}
+                className="btn-outline flex items-center"
+              >
+                <MoreHorizontal className="mr-2 h-4 w-4" />
+                Ferramentas
+              </button>
+              
+              {showToolsDropdown && (
+                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                  <div className="py-2">
+                    <button
+                      onClick={() => {
+                        setShowChapterNav(!showChapterNav);
+                        setShowToolsDropdown(false);
+                      }}
+                      className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <BookOpen className="mr-3 h-4 w-4" />
+                      Navegador de Capítulos
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAnalytics(!showAnalytics);
+                        setShowToolsDropdown(false);
+                      }}
+                      className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <BarChart3 className="mr-3 h-4 w-4" />
+                      Analytics
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowBackupManager(true);
+                        setShowToolsDropdown(false);
+                      }}
+                      className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <Save className="mr-3 h-4 w-4" />
+                      Gerenciar Backups
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowConsistencyChecker(true);
+                        setShowToolsDropdown(false);
+                      }}
+                      className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <CheckCircle className="mr-3 h-4 w-4" />
+                      Verificar Consistência
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowNovelReader(true);
+                        setShowToolsDropdown(false);
+                      }}
+                      className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <Book className="mr-3 h-4 w-4" />
+                      Leitor Virtual
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -838,6 +911,16 @@ const Editor = () => {
       {/* Modal de Gerenciador de Backups */}
       {showBackupManager && (
         <BackupManager onClose={() => setShowBackupManager(false)} />
+      )}
+
+      {/* Modal de Verificador de Consistência */}
+      {showConsistencyChecker && (
+        <ConsistencyChecker onClose={() => setShowConsistencyChecker(false)} />
+      )}
+
+      {/* Modal de Leitor de Light Novel */}
+      {showNovelReader && (
+        <NovelReader onClose={() => setShowNovelReader(false)} />
       )}
     </div>
   );
