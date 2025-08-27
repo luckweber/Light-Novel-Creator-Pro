@@ -1,0 +1,280 @@
+/* Estilos customizados para o Editor Quill */
+
+/* Reset e configurações base */
+.ql-container,
+.ql-container .ql-editor,
+.ql-snow .ql-editor,
+.ql-editor {
+  background-color: #ffffff !important;
+  color: #1f2937 !important;
+  font-size: 16px !important;
+  line-height: 1.7 !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  padding: 24px !important;
+}
+
+/* Força texto preto em todos os elementos filhos */
+.ql-editor * {
+  color: #1f2937 !important;
+}
+
+/* Container principal */
+.ql-container.ql-snow,
+.ql-container {
+  background-color: #ffffff !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 0 0 0.5rem 0.5rem !important;
+  font-size: 16px !important;
+}
+
+/* Toolbar */
+.ql-toolbar {
+  border: 1px solid hsl(var(--border)) !important;
+  border-bottom: none !important;
+  border-radius: 0.5rem 0.5rem 0 0 !important;
+  background-color: hsl(var(--card)) !important;
+}
+
+/* Botões da toolbar */
+.ql-toolbar .ql-formats {
+  margin-right: 15px !important;
+}
+
+.ql-toolbar button {
+  color: hsl(var(--foreground)) !important;
+  border: none !important;
+  background: transparent !important;
+  padding: 5px !important;
+  margin: 2px !important;
+  border-radius: 4px !important;
+}
+
+.ql-toolbar button:hover {
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
+}
+
+.ql-toolbar button.ql-active {
+  background-color: hsl(var(--primary-100)) !important;
+  color: hsl(var(--primary-700)) !important;
+}
+
+/* Ícones SVG da toolbar */
+.ql-toolbar .ql-stroke {
+  stroke: hsl(var(--foreground)) !important;
+}
+
+.ql-toolbar .ql-fill,
+.ql-toolbar .ql-even,
+.ql-toolbar .ql-odd {
+  fill: hsl(var(--foreground)) !important;
+}
+
+.ql-toolbar button:hover .ql-stroke {
+  stroke: hsl(var(--accent-foreground)) !important;
+}
+
+.ql-toolbar button:hover .ql-fill,
+.ql-toolbar button:hover .ql-even,
+.ql-toolbar button:hover .ql-odd {
+  fill: hsl(var(--accent-foreground)) !important;
+}
+
+.ql-toolbar button.ql-active .ql-stroke {
+  stroke: hsl(var(--primary-700)) !important;
+}
+
+.ql-toolbar button.ql-active .ql-fill,
+.ql-toolbar button.ql-active .ql-even,
+.ql-toolbar button.ql-active .ql-odd {
+  fill: hsl(var(--primary-700)) !important;
+}
+
+/* Picker dropdowns */
+.ql-toolbar .ql-picker-label {
+  color: hsl(var(--foreground)) !important;
+  border: none !important;
+}
+
+.ql-toolbar .ql-picker-label:hover {
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
+}
+
+.ql-toolbar .ql-picker-options {
+  background-color: hsl(var(--popover)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 0.375rem !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+.ql-toolbar .ql-picker-item {
+  color: hsl(var(--popover-foreground)) !important;
+}
+
+.ql-toolbar .ql-picker-item:hover {
+  background-color: hsl(var(--accent)) !important;
+}
+
+/* Parágrafos e texto */
+.ql-editor p,
+.ql-editor p *,
+.ql-editor span,
+.ql-editor div,
+.ql-editor br + *,
+.ql-editor [contenteditable],
+.ql-editor [data-gramm_editor] {
+  color: #1f2937 !important;
+  background-color: transparent !important;
+  margin-bottom: 1.2em !important;
+  text-align: justify !important;
+}
+
+/* Títulos */
+.ql-editor h1 {
+  color: #111827 !important;
+  font-weight: 700 !important;
+  font-size: 2em !important;
+  margin-bottom: 0.8em !important;
+  margin-top: 1.2em !important;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0.3em;
+}
+
+.ql-editor h2 {
+  color: #111827 !important;
+  font-weight: 600 !important;
+  font-size: 1.6em !important;
+  margin-bottom: 0.7em !important;
+  margin-top: 1em !important;
+}
+
+.ql-editor h3 {
+  color: #111827 !important;
+  font-weight: 600 !important;
+  font-size: 1.3em !important;
+  margin-bottom: 0.6em !important;
+  margin-top: 0.8em !important;
+}
+
+/* Formatação de texto */
+.ql-editor strong {
+  color: #111827 !important;
+  font-weight: 700 !important;
+}
+
+.ql-editor em {
+  color: #374151 !important;
+  font-style: italic !important;
+}
+
+.ql-editor u {
+  color: #1f2937 !important;
+  text-decoration: underline !important;
+}
+
+/* Listas */
+.ql-editor ul, .ql-editor ol {
+  color: #1f2937 !important;
+  padding-left: 1.5em !important;
+  margin-bottom: 1em !important;
+}
+
+.ql-editor li {
+  color: #1f2937 !important;
+  margin-bottom: 0.5em !important;
+}
+
+/* Citações */
+.ql-editor blockquote {
+  color: #4b5563 !important;
+  border-left: 4px solid #d1d5db !important;
+  padding-left: 1em !important;
+  margin: 1em 0 !important;
+  font-style: italic !important;
+  background-color: #f9fafb !important;
+  padding: 1em !important;
+  border-radius: 0.375rem !important;
+}
+
+/* Links */
+.ql-editor a {
+  color: #2563eb !important;
+  text-decoration: underline !important;
+}
+
+.ql-editor a:hover {
+  color: #1d4ed8 !important;
+}
+
+/* Código */
+.ql-editor code {
+  background-color: #f3f4f6 !important;
+  color: #1f2937 !important;
+  padding: 0.2em 0.4em !important;
+  border-radius: 0.25rem !important;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
+}
+
+.ql-editor pre {
+  background-color: #f3f4f6 !important;
+  color: #1f2937 !important;
+  padding: 1em !important;
+  border-radius: 0.5rem !important;
+  overflow-x: auto !important;
+  margin: 1em 0 !important;
+}
+
+/* Placeholder */
+.ql-editor.ql-blank::before {
+  color: #9ca3af !important;
+  font-style: italic !important;
+  font-size: 16px !important;
+}
+
+/* Seleção de texto */
+.ql-editor ::selection {
+  background-color: #dbeafe !important;
+  color: #1e40af !important;
+}
+
+/* Foco no editor */
+.ql-container.ql-snow:focus-within {
+  border-color: hsl(var(--ring)) !important;
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.1) !important;
+}
+
+.ql-toolbar.ql-snow:focus-within {
+  border-color: hsl(var(--ring)) !important;
+}
+
+/* Altura mínima */
+.ql-editor {
+  min-height: 400px !important;
+}
+
+/* Força modo claro sempre no editor */
+@media (prefers-color-scheme: dark) {
+  .ql-editor,
+  .ql-editor *,
+  .ql-editor p,
+  .ql-editor span,
+  .ql-editor div {
+    background-color: #ffffff !important;
+    color: #1f2937 !important;
+  }
+  
+  .ql-toolbar,
+  .ql-toolbar * {
+    background-color: hsl(var(--card)) !important;
+    color: hsl(var(--card-foreground)) !important;
+    border-color: hsl(var(--border)) !important;
+  }
+  
+  .ql-container,
+  .ql-container * {
+    background-color: #ffffff !important;
+    color: #1f2937 !important;
+    border-color: hsl(var(--border)) !important;
+  }
+}

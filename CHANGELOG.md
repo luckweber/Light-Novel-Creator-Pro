@@ -2,6 +2,87 @@
 
 Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
+## [2.1.0] - 2024-12-19
+
+### 🆕 Novas Funcionalidades
+
+#### Sistema de Progresso e Metas
+- **Metas de escrita**: Definição de metas diárias, semanais e mensais
+- **Progresso visual**: Barras de progresso com cores dinâmicas
+- **Conquistas**: Sistema de badges e conquistas por marcos
+- **Estatísticas detalhadas**: Métricas de produtividade e tempo de escrita
+- **Analytics avançado**: Rastreamento de eventos e performance
+
+#### Exportação Avançada
+- **Múltiplos formatos**: PDF, EPUB, Word, HTML, TXT
+- **Backup completo**: Exportação de todos os dados do projeto
+- **Estatísticas exportáveis**: Relatórios detalhados em JSON
+- **Formatação profissional**: Templates otimizados para cada formato
+
+#### Melhorias no Editor
+- **Performance otimizada**: Redução de re-renders e melhor responsividade
+- **CSS otimizado**: Estilos mais limpos e consistentes
+- **Auto-save inteligente**: Configurável e com feedback visual
+- **Navegação de capítulos**: Interface melhorada com status visual
+
+#### Chapter Navigator Aprimorado
+- **Status de capítulos**: Indicadores visuais (Vazio, Rascunho, Em progresso, Completo)
+- **Duplicação de capítulos**: Criação rápida de cópias
+- **Auto-expansão**: Volumes expandem automaticamente ao adicionar capítulos
+- **Melhor UX**: Transições suaves e feedback visual
+
+### 🎨 Melhorias de Interface
+
+#### Design System Expandido
+- **Componentes otimizados**: Melhor performance e reutilização
+- **Animações suaves**: Transições e micro-interações
+- **Feedback visual**: Estados de loading e confirmações
+- **Responsividade**: Melhor adaptação a diferentes telas
+
+#### Sidebar Inteligente
+- **Progress Summary**: Widget de progresso e metas
+- **Estatísticas em tempo real**: Atualização automática
+- **Conquistas visuais**: Badges e indicadores de progresso
+- **Configuração de metas**: Modal intuitivo para definir objetivos
+
+### 🔧 Melhorias Técnicas
+
+#### Performance
+- **Memoização**: Uso de useMemo e useCallback para otimização
+- **Lazy loading**: Carregamento sob demanda de componentes
+- **CSS otimizado**: Redução de regras redundantes
+- **Analytics eficiente**: Rastreamento sem impacto na performance
+
+#### Arquitetura
+- **Utilitários modulares**: Funções reutilizáveis para exportação
+- **Analytics centralizado**: Sistema unificado de rastreamento
+- **Estado otimizado**: Melhor gerenciamento de dados
+- **Error handling**: Tratamento robusto de erros
+
+### 📊 Analytics e Insights
+
+#### Rastreamento de Eventos
+- **Eventos de escrita**: Salvamento, geração de texto, mudanças de capítulo
+- **Uso de IA**: Geração de texto, erros, provedores utilizados
+- **Performance**: Métricas de tempo de resposta e uso de recursos
+- **Comportamento**: Padrões de uso e preferências
+
+#### Relatórios
+- **Produtividade**: Palavras por sessão, tempo de escrita
+- **Metas**: Progresso em relação aos objetivos definidos
+- **Conquistas**: Marcos atingidos e badges desbloqueados
+- **Exportação**: Dados completos para análise externa
+
+### 🛡️ Segurança e Privacidade
+
+#### Proteção de Dados
+- **Analytics local**: Todos os dados ficam no dispositivo
+- **Configuração opcional**: Usuário pode desabilitar rastreamento
+- **Exportação segura**: Dados sensíveis removidos dos backups
+- **Controle granular**: Cada tipo de dado pode ser configurado
+
+---
+
 ## [2.0.0] - 2024-12-19
 
 ### 🆕 Novas Funcionalidades

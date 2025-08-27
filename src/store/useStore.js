@@ -12,6 +12,28 @@ const useStore = create(
       editorContent: '',
       editorHistory: [],
       currentChapter: null,
+      currentVolume: null,
+      
+      // Estrutura do Projeto
+      projectStructure: {
+        volumes: [
+          // {
+          //   id: 1,
+          //   title: 'Volume 1',
+          //   description: '',
+          //   chapters: [
+          //     {
+          //       id: 1,
+          //       title: 'Capítulo 1',
+          //       content: '',
+          //       wordCount: 0,
+          //       createdAt: '',
+          //       updatedAt: ''
+          //     }
+          //   ]
+          // }
+        ]
+      },
       
       // Mundo
       worldData: {
@@ -201,6 +223,87 @@ const useStore = create(
       })),
       
       setCurrentChapter: (chapter) => set({ currentChapter: chapter }),
+      setCurrentVolume: (volume) => set({ currentVolume: volume }),
+      
+      // Actions para Volumes
+      addVolume: (volume) => set((state) => ({
+        projectStructure: {
+          ...state.projectStructure,
+          volumes: [...state.projectStructure.volumes, {
+            ...volume,
+            id: Date.now(),
+            chapters: [],
+            createdAt: new Date().toISOString()
+          }]
+        }
+      })),
+      
+      updateVolume: (volumeId, updates) => set((state) => ({
+        projectStructure: {
+          ...state.projectStructure,
+          volumes: state.projectStructure.volumes.map(v => 
+            v.id === volumeId ? { ...v, ...updates, updatedAt: new Date().toISOString() } : v
+          )
+        }
+      })),
+      
+      deleteVolume: (volumeId) => set((state) => ({
+        projectStructure: {
+          ...state.projectStructure,
+          volumes: state.projectStructure.volumes.filter(v => v.id !== volumeId)
+        }
+      })),
+      
+      // Actions para Capítulos
+      addChapter: (volumeId, chapter) => set((state) => ({
+        projectStructure: {
+          ...state.projectStructure,
+          volumes: state.projectStructure.volumes.map(v => 
+            v.id === volumeId ? {
+              ...v,
+              chapters: [...v.chapters, {
+                ...chapter,
+                id: Date.now(),
+                content: '',
+                wordCount: 0,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              }]
+            } : v
+          )
+        }
+      })),
+      
+      updateChapter: (volumeId, chapterId, updates) => set((state) => ({
+        projectStructure: {
+          ...state.projectStructure,
+          volumes: state.projectStructure.volumes.map(v => 
+            v.id === volumeId ? {
+              ...v,
+              chapters: v.chapters.map(c => 
+                c.id === chapterId ? { 
+                  ...c, 
+                  ...updates, 
+                  updatedAt: new Date().toISOString(),
+                  wordCount: updates.content ? updates.content.replace(/<[^>]*>/g, '').split(/\s+/).filter(w => w.length > 0).length : c.wordCount
+                } : c
+              )
+            } : v
+          )
+        }
+      })),
+      
+      deleteChapter: (volumeId, chapterId) => set((state) => ({
+        projectStructure: {
+          ...state.projectStructure,
+          volumes: state.projectStructure.volumes.map(v => 
+            v.id === volumeId ? {
+              ...v,
+              chapters: v.chapters.filter(c => c.id !== chapterId)
+            } : v
+          )
+        }
+      })),
       
       updateWorldData: (updates) => set((state) => ({
         worldData: { ...state.worldData, ...updates }
@@ -331,6 +434,7 @@ const useStore = create(
       name: 'light-novel-creator-storage',
       partialize: (state) => ({
         projects: state.projects,
+        projectStructure: state.projectStructure,
         worldData: state.worldData,
         characters: state.characters,
         loreData: state.loreData,

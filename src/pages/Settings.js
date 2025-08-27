@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import toast from 'react-hot-toast';
+import NotificationSettings from '../components/notifications/NotificationSettings';
 
 const Settings = () => {
   const { 
@@ -1120,139 +1121,7 @@ const Settings = () => {
   );
 
   const renderNotifications = () => (
-    <div className="space-y-8">
-      {/* Configurações Gerais */}
-      <div className="card">
-        <div className="flex items-center mb-6">
-          <Bell className="h-6 w-6 text-primary-600 mr-3" />
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Notificações</h3>
-            <p className="text-sm text-gray-500">Configure como e quando receber alertas</p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Bell className="h-5 w-5 text-gray-400 mr-3" />
-              <div>
-                <label className="text-sm font-medium text-gray-700">Notificações Globais</label>
-                <p className="text-sm text-gray-500">Habilitar todas as notificações da aplicação</p>
-              </div>
-            </div>
-            <input
-              type="checkbox"
-              checked={settings?.notifications !== false}
-              onChange={(e) => handleSettingChange('notifications', e.target.checked)}
-              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Volume2 className="h-5 w-5 text-gray-400 mr-3" />
-              <div>
-                <label className="text-sm font-medium text-gray-700">Sons</label>
-                <p className="text-sm text-gray-500">Reproduzir sons para notificações</p>
-              </div>
-            </div>
-            <input
-              type="checkbox"
-              checked={settings?.notificationSounds !== false}
-              onChange={(e) => handleSettingChange('notificationSounds', e.target.checked)}
-              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Tipos de Notificação */}
-      <div className="card">
-        <div className="flex items-center mb-6">
-          <SettingsIcon className="h-6 w-6 text-primary-600 mr-3" />
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Tipos de Notificação</h3>
-            <p className="text-sm text-gray-500">Escolha quais tipos de notificação receber</p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {notificationTypes.map((type) => (
-            <div key={type.id} className="flex items-center justify-between">
-              <div>
-                <label className="text-sm font-medium text-gray-700">{type.label}</label>
-                <p className="text-sm text-gray-500">{type.description}</p>
-              </div>
-              <input
-                type="checkbox"
-                checked={settings?.notificationTypes?.[type.id] !== false}
-                onChange={(e) => handleSettingChange('notificationTypes', {
-                  ...settings?.notificationTypes,
-                  [type.id]: e.target.checked
-                })}
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Lembretes */}
-      <div className="card">
-        <div className="flex items-center mb-6">
-          <Clock className="h-6 w-6 text-primary-600 mr-3" />
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Lembretes de Escrita</h3>
-            <p className="text-sm text-gray-500">Configure lembretes para manter sua rotina de escrita</p>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="text-sm font-medium text-gray-700">Lembretes Diários</label>
-              <p className="text-sm text-gray-500">Receber lembrete para escrever todos os dias</p>
-            </div>
-            <input
-              type="checkbox"
-              checked={settings?.dailyReminders || false}
-              onChange={(e) => handleSettingChange('dailyReminders', e.target.checked)}
-              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-            />
-          </div>
-
-          {settings?.dailyReminders && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-8">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Horário do Lembrete
-                </label>
-                <input
-                  type="time"
-                  value={settings?.reminderTime || '19:00'}
-                  onChange={(e) => handleSettingChange('reminderTime', e.target.value)}
-                  className="input-field"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Meta Diária (palavras)
-                </label>
-                <input
-                  type="number"
-                  value={settings?.dailyWordGoal || 500}
-                  onChange={(e) => handleSettingChange('dailyWordGoal', parseInt(e.target.value))}
-                  className="input-field"
-                  min="50"
-                  max="5000"
-                  step="50"
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+    <NotificationSettings />
   );
 
   const renderSecurity = () => (
@@ -1407,48 +1276,48 @@ const Settings = () => {
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <div className="text-center p-4 bg-blue-50 rounded-lg">
-            <div className="text-3xl font-bold text-blue-600 mb-2">{projects?.length || 0}</div>
-            <div className="text-sm font-medium text-gray-700">Projetos</div>
-            <div className="text-xs text-gray-500 mt-1">
-              {projects?.reduce((acc, p) => acc + (p.wordCount || 0), 0)?.toLocaleString() || 0} palavras
+                      <div className="text-center p-4 bg-primary-50 rounded-lg">
+              <div className="text-3xl font-bold text-primary-600 mb-2">{projects?.length || 0}</div>
+              <div className="text-sm font-medium text-foreground">Projetos</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {projects?.reduce((acc, p) => acc + (p.wordCount || 0), 0)?.toLocaleString() || 0} palavras
+              </div>
             </div>
-          </div>
-          
-          <div className="text-center p-4 bg-green-50 rounded-lg">
-            <div className="text-3xl font-bold text-green-600 mb-2">{characters?.length || 0}</div>
-            <div className="text-sm font-medium text-gray-700">Personagens</div>
-            <div className="text-xs text-gray-500 mt-1">
-              {characters?.filter(c => c.role === 'protagonist').length || 0} protagonistas
+            
+            <div className="text-center p-4 bg-secondary-50 rounded-lg">
+              <div className="text-3xl font-bold text-secondary-600 mb-2">{characters?.length || 0}</div>
+              <div className="text-sm font-medium text-foreground">Personagens</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {characters?.filter(c => c.role === 'protagonist').length || 0} protagonistas
+              </div>
             </div>
-          </div>
-          
-          <div className="text-center p-4 bg-purple-50 rounded-lg">
-            <div className="text-3xl font-bold text-purple-600 mb-2">{worldData?.locations?.length || 0}</div>
-            <div className="text-sm font-medium text-gray-700">Locais</div>
-            <div className="text-xs text-gray-500 mt-1">
-              {worldData?.cultures?.length || 0} culturas
+            
+            <div className="text-center p-4 bg-accent rounded-lg">
+              <div className="text-3xl font-bold text-accent-foreground mb-2">{worldData?.locations?.length || 0}</div>
+              <div className="text-sm font-medium text-foreground">Locais</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {worldData?.cultures?.length || 0} culturas
+              </div>
             </div>
-          </div>
-          
-          <div className="text-center p-4 bg-orange-50 rounded-lg">
-            <div className="text-3xl font-bold text-orange-600 mb-2">{aiConversations?.length || 0}</div>
-            <div className="text-sm font-medium text-gray-700">Conversas AI</div>
-            <div className="text-xs text-gray-500 mt-1">
-              {aiConversations?.reduce((acc, c) => acc + (c.messages?.length || 0), 0) || 0} mensagens
+            
+            <div className="text-center p-4 bg-muted rounded-lg">
+              <div className="text-3xl font-bold text-muted-foreground mb-2">{aiConversations?.length || 0}</div>
+              <div className="text-sm font-medium text-foreground">Conversas AI</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {aiConversations?.reduce((acc, c) => acc + (c.messages?.length || 0), 0) || 0} mensagens
+              </div>
             </div>
-          </div>
         </div>
 
         {/* Uso de Armazenamento */}
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+        <div className="mt-6 p-4 bg-muted rounded-lg">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700">Uso de Armazenamento Local</span>
-            <span className="text-sm text-gray-500">
+            <span className="text-sm font-medium text-foreground">Uso de Armazenamento Local</span>
+            <span className="text-sm text-muted-foreground">
               {Math.round(JSON.stringify(localStorage).length / 1024)} KB
             </span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-border rounded-full h-2">
             <div
               className="bg-primary-600 h-2 rounded-full transition-all duration-300"
               style={{
@@ -1456,7 +1325,7 @@ const Settings = () => {
               }}
             />
           </div>
-          <div className="flex justify-between text-xs text-gray-500 mt-1">
+          <div className="flex justify-between text-xs text-muted-foreground mt-1">
             <span>0 KB</span>
             <span>10 MB (limite recomendado)</span>
           </div>
@@ -1610,92 +1479,20 @@ const Settings = () => {
 
   const renderAdvanced = () => (
     <div className="space-y-8">
-      {/* Configurações de Desenvolvimento */}
+      {/* Performance */}
       <div className="card">
         <div className="flex items-center mb-6">
-          <Server className="h-6 w-6 text-primary-600 mr-3" />
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Configurações Avançadas</h3>
-            <p className="text-sm text-gray-500">Configurações técnicas para usuários experientes</p>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="text-sm font-medium text-gray-700">Modo de Desenvolvimento</label>
-              <p className="text-sm text-gray-500">Habilitar logs detalhados e ferramentas de debug</p>
-            </div>
-            <input
-              type="checkbox"
-              checked={settings?.devMode || false}
-              onChange={(e) => handleSettingChange('devMode', e.target.checked)}
-              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="text-sm font-medium text-gray-700">Logs Detalhados</label>
-              <p className="text-sm text-gray-500">Registrar informações detalhadas no console</p>
-            </div>
-            <input
-              type="checkbox"
-              checked={settings?.verboseLogging || false}
-              onChange={(e) => handleSettingChange('verboseLogging', e.target.checked)}
-              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="text-sm font-medium text-gray-700">Funcionalidades Beta</label>
-              <p className="text-sm text-gray-500">Habilitar recursos experimentais (pode ser instável)</p>
-            </div>
-            <input
-              type="checkbox"
-              checked={settings?.betaFeatures || false}
-              onChange={(e) => handleSettingChange('betaFeatures', e.target.checked)}
-              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Configurações de Performance */}
-      <div className="card">
-        <div className="flex items-center mb-6">
-          <Activity className="h-6 w-6 text-primary-600 mr-3" />
+          <Zap className="h-6 w-6 text-primary-600 mr-3" />
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Performance</h3>
-            <p className="text-sm text-gray-500">Ajustes para otimizar o desempenho</p>
+            <p className="text-sm text-gray-500">Otimize o desempenho da aplicação</p>
           </div>
         </div>
 
         <div className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Limite de Renderização (elementos): {settings?.renderLimit || 1000}
-            </label>
-            <input
-              type="range"
-              min="100"
-              max="5000"
-              step="100"
-              value={settings?.renderLimit || 1000}
-              onChange={(e) => handleSettingChange('renderLimit', parseInt(e.target.value))}
-              className="w-full"
-            />
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>100</span>
-              <span>5000</span>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Cache TTL (minutos): {settings?.cacheTTL || 60}
-            </label>
+            <label className="text-sm font-medium text-gray-700">Cache TTL (minutos)</label>
+            <p className="text-sm text-gray-500 mb-2">Tempo de vida do cache de dados</p>
             <input
               type="range"
               min="5"
@@ -1780,8 +1577,8 @@ const Settings = () => {
           </div>
         </div>
 
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Recursos Suportados</h4>
+        <div className="mt-6 p-4 bg-muted rounded-lg">
+          <h4 className="text-sm font-medium text-foreground mb-2">Recursos Suportados</h4>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
             <div className={`flex items-center ${typeof Storage !== 'undefined' ? 'text-green-600' : 'text-red-600'}`}>
               <CheckCircle className="h-3 w-3 mr-1" />
@@ -1879,7 +1676,7 @@ const Settings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">

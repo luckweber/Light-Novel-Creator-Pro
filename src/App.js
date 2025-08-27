@@ -11,8 +11,23 @@ import NarrativeGenerator from './pages/NarrativeGenerator';
 import AIAssistant from './pages/AIAssistant';
 import ProjectManager from './pages/ProjectManager';
 import Settings from './pages/Settings';
+import { useTheme } from './hooks/useTheme';
+import backupManager from './utils/backupUtils';
 
 function App() {
+  // Aplica o tema automaticamente
+  useTheme();
+
+  // Inicializar sistema de backup
+  React.useEffect(() => {
+    backupManager.init();
+    
+    // Cleanup ao desmontar
+    return () => {
+      backupManager.destroy();
+    };
+  }, []);
+
   return (
     <Router>
       <div className="App">
@@ -34,8 +49,9 @@ function App() {
           toastOptions={{
             duration: 4000,
             style: {
-              background: '#363636',
-              color: '#fff',
+              background: 'hsl(var(--card))',
+              color: 'hsl(var(--card-foreground))',
+              border: '1px solid hsl(var(--border))',
             },
             success: {
               duration: 3000,

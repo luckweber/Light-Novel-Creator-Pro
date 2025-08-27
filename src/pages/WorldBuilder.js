@@ -875,8 +875,8 @@ Formate como JSON:
               <MapPin className="h-6 w-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Total de Elementos</p>
-              <p className="text-2xl font-bold text-gray-900">{worldStats.totalElements}</p>
+                          <p className="text-sm font-medium text-muted-foreground">Total de Elementos</p>
+            <p className="text-2xl font-bold text-foreground">{worldStats.totalElements}</p>
             </div>
           </div>
         </div>
@@ -887,8 +887,8 @@ Formate como JSON:
               <Building className="h-6 w-6 text-green-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Locais</p>
-              <p className="text-2xl font-bold text-gray-900">{worldStats.locations}</p>
+                          <p className="text-sm font-medium text-muted-foreground">Locais</p>
+            <p className="text-2xl font-bold text-foreground">{worldStats.locations}</p>
             </div>
           </div>
         </div>
@@ -899,8 +899,8 @@ Formate como JSON:
               <Users className="h-6 w-6 text-purple-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Culturas</p>
-              <p className="text-2xl font-bold text-gray-900">{worldStats.cultures}</p>
+                          <p className="text-sm font-medium text-muted-foreground">Culturas</p>
+            <p className="text-2xl font-bold text-foreground">{worldStats.cultures}</p>
             </div>
           </div>
         </div>
@@ -911,8 +911,8 @@ Formate como JSON:
               <Star className="h-6 w-6 text-orange-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Religiões</p>
-              <p className="text-2xl font-bold text-gray-900">{worldStats.religions}</p>
+                          <p className="text-sm font-medium text-muted-foreground">Religiões</p>
+            <p className="text-2xl font-bold text-foreground">{worldStats.religions}</p>
             </div>
           </div>
         </div>
@@ -923,7 +923,7 @@ Formate como JSON:
         {/* Informações básicas */}
         <div className="card">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">Informações Básicas</h3>
+                          <h3 className="text-lg font-semibold text-foreground">Informações Básicas</h3>
             <button className="btn-ghost">
               <Edit className="h-4 w-4" />
             </button>
@@ -931,7 +931,7 @@ Formate como JSON:
           
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Nome do Mundo</label>
+                              <label className="block text-sm font-medium text-foreground mb-2">Nome do Mundo</label>
               <input
                 type="text"
                 value={worldData?.name || ''}
@@ -942,7 +942,7 @@ Formate como JSON:
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Descrição Geral</label>
+                              <label className="block text-sm font-medium text-foreground mb-2">Descrição Geral</label>
               <textarea
                 value={worldData?.description || ''}
                 onChange={(e) => updateWorldData({ description: e.target.value })}
@@ -954,7 +954,7 @@ Formate como JSON:
             
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Gênero</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Gênero</label>
                 <select
                   value={worldData?.genre || ''}
                   onChange={(e) => updateWorldData({ genre: e.target.value })}
@@ -973,7 +973,7 @@ Formate como JSON:
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nível Tecnológico</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Nível Tecnológico</label>
                 <select
                   value={worldData?.techLevel || ''}
                   onChange={(e) => updateWorldData({ techLevel: e.target.value })}
@@ -999,7 +999,7 @@ Formate como JSON:
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
               <Sparkles className="h-5 w-5 text-purple-600 mr-2" />
-              <h3 className="text-lg font-semibold text-gray-900">Assistente IA</h3>
+              <h3 className="text-lg font-semibold text-foreground">Assistente IA</h3>
             </div>
             {aiProvider && (
               <span className="badge badge-success">
@@ -1051,12 +1051,12 @@ Formate como JSON:
               {(isGenerating || batchGeneration) && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">
+                    <span className="text-muted-foreground">
                       {batchGeneration ? 'Geração em lote...' : 'Gerando conteúdo...'}
                     </span>
-                    <span className="text-gray-500">{generationProgress}%</span>
+                    <span className="text-muted-foreground">{generationProgress}%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-muted rounded-full h-2">
                     <div 
                       className="bg-purple-600 h-2 rounded-full transition-all duration-300"
                       style={{ width: `${generationProgress}%` }}
@@ -1073,8 +1073,8 @@ Formate como JSON:
             </div>
           ) : (
             <div className="text-center py-8">
-              <Zap className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 mb-4">Configure um provedor de IA para usar a geração automática</p>
+                              <Zap className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground mb-4">Configure um provedor de IA para usar a geração automática</p>
               <button 
                 onClick={() => window.location.href = '/settings'}
                 className="btn-primary"
@@ -1089,10 +1089,10 @@ Formate como JSON:
       {/* Elementos recentes */}
       <div className="card">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">Elementos Recentes</h3>
+          <h3 className="text-lg font-semibold text-foreground">Elementos Recentes</h3>
           <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-500">{worldStats.recentlyAdded} esta semana</span>
-            <Clock className="h-4 w-4 text-gray-400" />
+            <span className="text-sm text-muted-foreground">{worldStats.recentlyAdded} esta semana</span>
+            <Clock className="h-4 w-4 text-muted-foreground" />
           </div>
         </div>
 
@@ -1118,9 +1118,9 @@ Formate como JSON:
           </div>
         ) : (
           <div className="text-center py-12">
-            <Globe className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Comece a construir seu mundo</h3>
-            <p className="text-gray-500 mb-6">Crie locais, culturas e sistemas para dar vida à sua história</p>
+                            <Globe className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">Comece a construir seu mundo</h3>
+                <p className="text-muted-foreground mb-6">Crie locais, culturas e sistemas para dar vida à sua história</p>
             <div className="flex justify-center space-x-3">
               <button 
                 onClick={() => setActiveTab('geography')}
@@ -1145,7 +1145,7 @@ Formate como JSON:
   const renderGeography = () => (
     <div className="space-y-6 animate-fade-in">
       {/* Subabas */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-border">
         <nav className="-mb-px flex space-x-8 overflow-x-auto">
           {geographyTabs.map((tab) => (
             <button
@@ -1153,14 +1153,14 @@ Formate como JSON:
               onClick={() => setActiveSubTab(tab.id)}
               className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
                 activeSubTab === tab.id
-                  ? 'border-green-500 text-green-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
               }`}
             >
               <tab.icon className="h-4 w-4 mr-2" />
               {tab.label}
               {tab.count > 0 && (
-                <span className="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">
+                <span className="ml-2 bg-muted text-muted-foreground py-0.5 px-2 rounded-full text-xs">
                   {tab.count}
                 </span>
               )}
@@ -1174,13 +1174,13 @@ Formate como JSON:
         <div className="flex items-center space-x-4">
           {/* Busca */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
               placeholder="Buscar locais..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              className="pl-10 pr-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-background text-foreground"
             />
           </div>
 
@@ -1188,7 +1188,7 @@ Formate como JSON:
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            className="border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-background text-foreground"
           >
             <option value="all">Todos os tipos</option>
             {locationTypes.map((type) => (
@@ -1204,7 +1204,7 @@ Formate como JSON:
               setSortBy(field);
               setSortOrder(order);
             }}
-            className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            className="border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-background text-foreground"
           >
             <option value="name-asc">Nome (A-Z)</option>
             <option value="name-desc">Nome (Z-A)</option>
@@ -1231,16 +1231,16 @@ Formate como JSON:
           )} */}
 
           {/* Modo de visualização */}
-          <div className="flex items-center border border-gray-300 rounded-lg">
+          <div className="flex items-center border border-border rounded-lg">
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 ${viewMode === 'grid' ? 'bg-gray-100' : ''}`}
+              className={`p-2 ${viewMode === 'grid' ? 'bg-muted' : ''}`}
             >
               <Grid className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2 ${viewMode === 'list' ? 'bg-gray-100' : ''}`}
+              className={`p-2 ${viewMode === 'list' ? 'bg-muted' : ''}`}
             >
               <List className="h-4 w-4" />
             </button>
@@ -1270,11 +1270,11 @@ Formate como JSON:
     if (filteredAndSortedData.length === 0) {
       return (
         <div className="text-center py-16">
-          <MapPin className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <MapPin className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-foreground mb-2">
             {searchTerm || filterType !== 'all' ? 'Nenhum local encontrado' : 'Nenhum local criado ainda'}
           </h3>
-          <p className="text-gray-500 mb-6">
+          <p className="text-muted-foreground mb-6">
             {searchTerm || filterType !== 'all' 
               ? 'Tente ajustar os filtros de busca'
               : 'Comece adicionando seu primeiro local ou use a IA para gerar automaticamente'
@@ -1334,10 +1334,10 @@ Formate como JSON:
               <locationTypeInfo.icon className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900 group-hover:text-green-600 transition-colors">
-                {location.name}
-              </h3>
-              <p className="text-sm text-gray-500">{locationTypeInfo.label}</p>
+                          <h3 className="font-semibold text-foreground group-hover:text-primary-600 transition-colors">
+              {location.name}
+            </h3>
+            <p className="text-sm text-muted-foreground">{locationTypeInfo.label}</p>
             </div>
           </div>
           
@@ -1543,41 +1543,41 @@ Formate como JSON:
           {regions.map((region) => (
             <div
               key={region.id}
-              className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+              className="bg-card rounded-lg border border-border p-6 hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => {
                 setEditingItem(region);
                 setFormType('region');
               }}
             >
               <div className="flex items-center justify-between mb-3">
-                <h4 className="text-lg font-semibold text-gray-900">
+                <h4 className="text-lg font-semibold text-foreground">
                   {region.name}
                 </h4>
-                <Map className="h-5 w-5 text-green-500" />
+                <Map className="h-5 w-5 text-primary-500" />
               </div>
               
-              <p className="text-gray-600 text-sm line-clamp-3 mb-4">
+              <p className="text-muted-foreground text-sm line-clamp-3 mb-4">
                 {region.description}
               </p>
 
               {region.climate && (
                 <div className="mb-2">
-                  <span className="text-xs font-medium text-gray-500">Clima:</span>
-                  <p className="text-sm text-gray-700">{region.climate}</p>
+                  <span className="text-xs font-medium text-muted-foreground">Clima:</span>
+                  <p className="text-sm text-foreground">{region.climate}</p>
                 </div>
               )}
 
               {region.terrain && (
                 <div className="mb-2">
-                  <span className="text-xs font-medium text-gray-500">Terreno:</span>
-                  <p className="text-sm text-gray-700">{region.terrain}</p>
+                  <span className="text-xs font-medium text-muted-foreground">Terreno:</span>
+                  <p className="text-sm text-foreground">{region.terrain}</p>
                 </div>
               )}
 
               {region.population && (
                 <div>
-                  <span className="text-xs font-medium text-gray-500">População:</span>
-                  <p className="text-sm text-gray-700">{region.population}</p>
+                  <span className="text-xs font-medium text-muted-foreground">População:</span>
+                  <p className="text-sm text-foreground">{region.population}</p>
                 </div>
               )}
             </div>
@@ -1652,26 +1652,26 @@ Formate como JSON:
           {landmarks.map((landmark) => (
             <div
               key={landmark.id}
-              className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+              className="bg-card rounded-lg border border-border p-6 hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => {
                 setEditingItem(landmark);
                 setFormType('landmark');
               }}
             >
               <div className="flex items-center justify-between mb-3">
-                <h4 className="text-lg font-semibold text-gray-900">
+                <h4 className="text-lg font-semibold text-foreground">
                   {landmark.name}
                 </h4>
-                <Navigation className="h-5 w-5 text-blue-500" />
+                <Navigation className="h-5 w-5 text-primary-500" />
               </div>
               
-              <p className="text-gray-600 text-sm line-clamp-3 mb-4">
+              <p className="text-muted-foreground text-sm line-clamp-3 mb-4">
                 {landmark.description}
               </p>
 
               {landmark.type && (
                 <div className="mb-2">
-                  <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                  <span className="inline-block px-2 py-1 bg-primary-100 text-primary-800 text-xs rounded">
                     {landmark.type}
                   </span>
                 </div>
@@ -1679,15 +1679,15 @@ Formate como JSON:
 
               {landmark.significance && (
                 <div className="mb-2">
-                  <span className="text-xs font-medium text-gray-500">Importância:</span>
-                  <p className="text-sm text-gray-700 line-clamp-2">{landmark.significance}</p>
+                  <span className="text-xs font-medium text-muted-foreground">Importância:</span>
+                  <p className="text-sm text-foreground line-clamp-2">{landmark.significance}</p>
                 </div>
               )}
 
               {landmark.location && (
                 <div>
-                  <span className="text-xs font-medium text-gray-500">Localização:</span>
-                  <p className="text-sm text-gray-700">{landmark.location}</p>
+                  <span className="text-xs font-medium text-muted-foreground">Localização:</span>
+                  <p className="text-sm text-foreground">{landmark.location}</p>
                 </div>
               )}
             </div>
@@ -1762,26 +1762,26 @@ Formate como JSON:
           {resources.map((resource) => (
             <div
               key={resource.id}
-              className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+              className="bg-card rounded-lg border border-border p-6 hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => {
                 setEditingItem(resource);
                 setFormType('resource');
               }}
             >
               <div className="flex items-center justify-between mb-3">
-                <h4 className="text-lg font-semibold text-gray-900">
+                <h4 className="text-lg font-semibold text-foreground">
                   {resource.name}
                 </h4>
-                <Gem className="h-5 w-5 text-purple-500" />
+                <Gem className="h-5 w-5 text-secondary-500" />
               </div>
               
-              <p className="text-gray-600 text-sm line-clamp-3 mb-4">
+              <p className="text-muted-foreground text-sm line-clamp-3 mb-4">
                 {resource.description}
               </p>
 
               {resource.type && (
                 <div className="mb-2">
-                  <span className="inline-block px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">
+                  <span className="inline-block px-2 py-1 bg-secondary-100 text-secondary-800 text-xs rounded">
                     {resource.type}
                   </span>
                 </div>
@@ -1789,15 +1789,15 @@ Formate como JSON:
 
               {resource.rarity && (
                 <div className="mb-2">
-                  <span className="text-xs font-medium text-gray-500">Raridade:</span>
-                  <p className="text-sm text-gray-700">{resource.rarity}</p>
+                  <span className="text-xs font-medium text-muted-foreground">Raridade:</span>
+                  <p className="text-sm text-foreground">{resource.rarity}</p>
                 </div>
               )}
 
               {resource.uses && (
                 <div>
-                  <span className="text-xs font-medium text-gray-500">Usos:</span>
-                  <p className="text-sm text-gray-700 line-clamp-2">{resource.uses}</p>
+                  <span className="text-xs font-medium text-muted-foreground">Usos:</span>
+                  <p className="text-sm text-foreground line-clamp-2">{resource.uses}</p>
                 </div>
               )}
             </div>
@@ -3082,17 +3082,17 @@ Formate como JSON:
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+              <h1 className="text-3xl font-bold text-foreground flex items-center">
                 <Globe className="h-8 w-8 text-green-600 mr-3" />
                 Construtor de Mundo
               </h1>
-              <p className="text-gray-600 mt-2">
+              <p className="text-muted-foreground mt-2">
                 Crie mundos ricos e detalhados para suas histórias
               </p>
             </div>
@@ -3100,8 +3100,8 @@ Formate como JSON:
             <div className="flex items-center space-x-4">
               {showStats && (
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-gray-900">{worldStats.totalElements}</div>
-                  <div className="text-sm text-gray-500">elementos criados</div>
+                  <div className="text-2xl font-bold text-foreground">{worldStats.totalElements}</div>
+                  <div className="text-sm text-muted-foreground">elementos criados</div>
                 </div>
               )}
               
@@ -3126,7 +3126,7 @@ Formate como JSON:
         </div>
 
         {/* Navegação principal */}
-        <div className="border-b border-gray-200 mb-8">
+        <div className="border-b border-border mb-8">
           <nav className="-mb-px flex space-x-8 overflow-x-auto">
             {mainTabs.map((tab) => (
               <button
@@ -3138,13 +3138,13 @@ Formate como JSON:
                 className={`group whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
                   activeTab === tab.id
                     ? `border-${tab.color}-500 text-${tab.color}-600`
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                 }`}
               >
                 <tab.icon className="h-5 w-5 mr-2" />
                 <div className="text-left">
                   <div>{tab.label}</div>
-                  <div className="text-xs text-gray-400 group-hover:text-gray-500 mt-0.5">
+                  <div className="text-xs text-muted-foreground group-hover:text-foreground mt-0.5">
                     {tab.description}
                   </div>
                 </div>

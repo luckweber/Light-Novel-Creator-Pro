@@ -105,11 +105,11 @@ const AIIntegration = ({ onSettingsClick }) => {
     const isTesting = testingProviders[providerId];
     
     if (isTesting) return <Loader className="h-4 w-4 animate-spin" />;
-    if (!isEnabled) return <div className="w-4 h-4 rounded-full bg-gray-300" />;
-    if (!hasApiKey) return <Key className="h-4 w-4 text-yellow-500" />;
-    if (status === 'connected') return <CheckCircle className="h-4 w-4 text-green-500" />;
-    if (status === 'error') return <AlertTriangle className="h-4 w-4 text-red-500" />;
-    return <div className="w-4 h-4 rounded-full bg-blue-300" />;
+    if (!isEnabled) return <div className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600" />;
+    if (!hasApiKey) return <Key className="h-4 w-4 text-yellow-500 dark:text-yellow-400" />;
+    if (status === 'connected') return <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400" />;
+    if (status === 'error') return <AlertTriangle className="h-4 w-4 text-red-500 dark:text-red-400" />;
+    return <div className="w-4 h-4 rounded-full bg-blue-300 dark:bg-blue-600" />;
   };
 
   const getProviderStatusText = (providerId) => {
@@ -133,13 +133,13 @@ const AIIntegration = ({ onSettingsClick }) => {
   );
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div className="card">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
-          <Sparkles className="h-6 w-6 text-purple-600 mr-3" />
+          <Sparkles className="h-6 w-6 text-purple-600 dark:text-purple-400 mr-3" />
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Integração com IA</h3>
-            <p className="text-sm text-gray-500">
+            <h3 className="text-lg font-semibold text-foreground">Integração com IA</h3>
+            <p className="text-sm text-muted-foreground">
               {connectedProviders.length > 0 
                 ? `${connectedProviders.length} provedor(es) conectado(s)`
                 : 'Nenhum provedor configurado'
@@ -162,24 +162,24 @@ const AIIntegration = ({ onSettingsClick }) => {
       {/* Status Geral */}
       <div className="mb-6">
         {connectedProviders.length > 0 ? (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
             <div className="flex items-center">
-              <CheckCircle className="h-5 w-5 text-green-600 mr-3" />
+              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 mr-3" />
               <div>
-                <h4 className="text-sm font-medium text-green-900">IA Configurada</h4>
-                <p className="text-sm text-green-700">
+                <h4 className="text-sm font-medium text-green-900 dark:text-green-100">IA Configurada</h4>
+                <p className="text-sm text-green-700 dark:text-green-300">
                   Você pode usar as funcionalidades de IA para gerar conteúdo, personagens e muito mais!
                 </p>
               </div>
             </div>
           </div>
         ) : (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
             <div className="flex items-center">
-              <Info className="h-5 w-5 text-blue-600 mr-3" />
+              <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-3" />
               <div>
-                <h4 className="text-sm font-medium text-blue-900">Configure sua IA</h4>
-                <p className="text-sm text-blue-700">
+                <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100">Configure sua IA</h4>
+                <p className="text-sm text-blue-700 dark:text-blue-300">
                   Configure pelo menos um provedor de IA para desbloquear funcionalidades avançadas de geração de conteúdo.
                 </p>
               </div>
@@ -190,7 +190,7 @@ const AIIntegration = ({ onSettingsClick }) => {
 
       {/* Lista de Provedores */}
       <div className="space-y-3">
-        <h4 className="text-sm font-medium text-gray-700 mb-3">Provedores Disponíveis</h4>
+        <h4 className="text-sm font-medium text-foreground mb-3">Provedores Disponíveis</h4>
         
         {aiProviders.map(provider => {
           const providerSettings = settings?.aiProviders?.[provider.id] || {};
@@ -200,19 +200,19 @@ const AIIntegration = ({ onSettingsClick }) => {
               key={provider.id}
               className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all ${
                 providerSettings.enabled 
-                  ? 'border-blue-200 bg-blue-50' 
-                  : 'border-gray-200 bg-gray-50'
+                  ? 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20' 
+                  : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/20'
               }`}
             >
               <div className="flex items-center">
                 <div className="text-2xl mr-3">{provider.icon}</div>
                 <div>
                   <div className="flex items-center">
-                    <h5 className="text-sm font-medium text-gray-900 mr-2">{provider.name}</h5>
+                    <h5 className="text-sm font-medium text-foreground mr-2">{provider.name}</h5>
                     {getProviderStatusIcon(provider.id)}
                   </div>
-                  <p className="text-xs text-gray-500">{provider.description}</p>
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs text-muted-foreground">{provider.description}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
                     Status: {getProviderStatusText(provider.id)}
                   </p>
                 </div>
@@ -223,7 +223,7 @@ const AIIntegration = ({ onSettingsClick }) => {
                   <button
                     onClick={() => testConnection(provider.id)}
                     disabled={testingProviders[provider.id]}
-                    className="text-blue-600 hover:text-blue-700 disabled:opacity-50"
+                    className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 disabled:opacity-50"
                     title="Testar conexão"
                   >
                     <RefreshCw className={`h-4 w-4 ${testingProviders[provider.id] ? 'animate-spin' : ''}`} />
@@ -232,7 +232,7 @@ const AIIntegration = ({ onSettingsClick }) => {
                 
                 <button
                   onClick={() => window.open(provider.website, '_blank')}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                   title="Abrir website"
                 >
                   <ExternalLink className="h-4 w-4" />
@@ -245,9 +245,9 @@ const AIIntegration = ({ onSettingsClick }) => {
 
       {/* Quick Setup */}
       {connectedProviders.length === 0 && (
-        <div className="mt-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
-          <h4 className="text-sm font-medium text-gray-900 mb-2">🚀 Setup Rápido</h4>
-          <p className="text-sm text-gray-600 mb-3">
+        <div className="mt-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+          <h4 className="text-sm font-medium text-foreground mb-2">🚀 Setup Rápido</h4>
+          <p className="text-sm text-muted-foreground mb-3">
             Recomendamos começar com o OpenAI (mais popular) ou Groq (mais rápido e gratuito):
           </p>
           <div className="flex space-x-2">
@@ -277,9 +277,9 @@ const AIIntegration = ({ onSettingsClick }) => {
       )}
 
       {/* Dicas */}
-      <div className="mt-6 p-3 bg-gray-50 rounded-lg">
-        <h5 className="text-xs font-medium text-gray-700 mb-2">💡 Dicas:</h5>
-        <ul className="text-xs text-gray-600 space-y-1">
+      <div className="mt-6 p-3 bg-gray-50 dark:bg-gray-900/20 rounded-lg">
+        <h5 className="text-xs font-medium text-foreground mb-2">💡 Dicas:</h5>
+        <ul className="text-xs text-muted-foreground space-y-1">
           <li>• Groq oferece modelos gratuitos e muito rápidos</li>
           <li>• OpenAI tem os modelos mais avançados (GPT-4)</li>
           <li>• Claude (Anthropic) é excelente para textos longos</li>
