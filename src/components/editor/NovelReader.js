@@ -19,9 +19,11 @@ import {
   FileText,
   List,
   Grid,
-  Sliders
+  Sliders,
+  Image
 } from 'lucide-react';
 import useStore from '../../store/useStore';
+import CoverManager from './CoverManager';
 
 const NovelReader = ({ onClose }) => {
   const [currentVolume, setCurrentVolume] = useState(1);
@@ -35,6 +37,9 @@ const NovelReader = ({ onClose }) => {
   const [viewMode, setViewMode] = useState('book'); // 'book', 'list', 'grid'
   const [showSettings, setShowSettings] = useState(false);
   const [showTableOfContents, setShowTableOfContents] = useState(false);
+  const [showCoverManager, setShowCoverManager] = useState(false);
+  const [coverManagerType, setCoverManagerType] = useState('volume');
+  const [coverManagerItemId, setCoverManagerItemId] = useState(null);
 
   const { currentProject, projectStructure } = useStore();
 
@@ -121,6 +126,12 @@ const NovelReader = ({ onClose }) => {
     setShowTableOfContents(false);
   };
 
+  const handleOpenCoverManager = (type, itemId) => {
+    setCoverManagerType(type);
+    setCoverManagerItemId(itemId);
+    setShowCoverManager(true);
+  };
+
   // Inicializar com o primeiro volume e capítulo disponíveis
   useEffect(() => {
     if (novelStructure.volumes.length > 0) {
@@ -193,6 +204,13 @@ const NovelReader = ({ onClose }) => {
               title="Configurações"
             >
               <Settings className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => handleOpenCoverManager('volume', currentVolume)}
+              className="p-2 rounded-lg hover:bg-amber-200 dark:hover:bg-gray-700"
+              title="Gerenciar Capa do Volume"
+            >
+              <Image className="h-5 w-5" />
             </button>
             <button
               onClick={toggleFullscreen}
@@ -415,6 +433,18 @@ const NovelReader = ({ onClose }) => {
                       }}
                     >
                       <div className="max-w-2xl mx-auto">
+                        {/* Chapter Cover */}
+                        {currentChapterData?.cover && (
+                          <div className="mb-6 flex justify-center">
+                            <div className="w-32 h-40 bg-white rounded-lg shadow-lg overflow-hidden">
+                              <img
+                                src={currentChapterData.cover.url}
+                                alt={`Capa do ${currentChapterData.title}`}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          </div>
+                        )}
                         <h2 className="text-2xl font-bold mb-6 text-center">{currentChapterData?.title}</h2>
                         <div className="prose prose-lg max-w-none">
                           {(() => {
@@ -444,6 +474,18 @@ const NovelReader = ({ onClose }) => {
                   <div className={`flex-1 p-8 ${isDarkMode ? 'bg-gray-900' : 'bg-amber-50'}`}>
                     <div className={`h-full border-l ${isDarkMode ? 'border-gray-700' : 'border-amber-200'}`}>
                       <div className="p-4">
+                        {/* Volume Cover */}
+                        {currentVolumeData?.cover && (
+                          <div className="mb-6 flex justify-center">
+                            <div className="w-40 h-52 bg-white rounded-lg shadow-lg overflow-hidden">
+                              <img
+                                src={currentVolumeData.cover.url}
+                                alt={`Capa do ${currentVolumeData.title}`}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          </div>
+                        )}
                         <h3 className="text-lg font-semibold mb-4">Notas do Capítulo</h3>
                         <div className="space-y-2 text-sm">
                           <p>• Este capítulo introduz novos elementos da história</p>
@@ -466,6 +508,18 @@ const NovelReader = ({ onClose }) => {
                     }}
                   >
                     <div className="max-w-4xl mx-auto">
+                      {/* Chapter Cover */}
+                      {currentChapterData?.cover && (
+                        <div className="mb-8 flex justify-center">
+                          <div className="w-40 h-52 bg-white rounded-lg shadow-lg overflow-hidden">
+                            <img
+                              src={currentChapterData.cover.url}
+                              alt={`Capa do ${currentChapterData.title}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        </div>
+                      )}
                       <h2 className="text-3xl font-bold mb-8 text-center">{currentChapterData?.title}</h2>
                       <div className="prose prose-xl max-w-none">
                         {(() => {
@@ -551,6 +605,15 @@ const NovelReader = ({ onClose }) => {
           </div>
         </div>
       </div>
+
+      {/* Cover Manager Modal */}
+      {showCoverManager && (
+        <CoverManager
+          onClose={() => setShowCoverManager(false)}
+          type={coverManagerType}
+          itemId={coverManagerItemId}
+        />
+      )}
     </div>
   );
 };

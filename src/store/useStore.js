@@ -354,6 +354,53 @@ const useStore = create(
         characters: state.characters.filter(c => c.id !== id)
       })),
       
+      // Actions para Gerenciamento de Capas
+      addVolumeCover: (volumeId, coverData) => set((state) => ({
+        projectStructure: {
+          ...state.projectStructure,
+          volumes: state.projectStructure.volumes.map(v => 
+            v.id === volumeId ? { ...v, cover: coverData } : v
+          )
+        }
+      })),
+      
+      removeVolumeCover: (volumeId) => set((state) => ({
+        projectStructure: {
+          ...state.projectStructure,
+          volumes: state.projectStructure.volumes.map(v => 
+            v.id === volumeId ? { ...v, cover: null } : v
+          )
+        }
+      })),
+      
+      addChapterCover: (volumeId, chapterId, coverData) => set((state) => ({
+        projectStructure: {
+          ...state.projectStructure,
+          volumes: state.projectStructure.volumes.map(v => 
+            v.id === volumeId ? {
+              ...v,
+              chapters: v.chapters.map(c => 
+                c.id === chapterId ? { ...c, cover: coverData } : c
+              )
+            } : v
+          )
+        }
+      })),
+      
+      removeChapterCover: (volumeId, chapterId) => set((state) => ({
+        projectStructure: {
+          ...state.projectStructure,
+          volumes: state.projectStructure.volumes.map(v => 
+            v.id === volumeId ? {
+              ...v,
+              chapters: v.chapters.map(c => 
+                c.id === chapterId ? { ...c, cover: null } : c
+              )
+            } : v
+          )
+        }
+      })),
+      
       setSelectedCharacter: (character) => set({ selectedCharacter: character }),
       
       addLoreItem: (category, item) => set((state) => ({

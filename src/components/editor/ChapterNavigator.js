@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { 
   Book, 
   BookOpen, 
@@ -11,10 +11,12 @@ import {
   MoreHorizontal,
   GripVertical,
   Copy,
-  Eye
+  Eye,
+  Image
 } from 'lucide-react';
 import useStore from '../../store/useStore';
 import toast from 'react-hot-toast';
+import CoverManager from './CoverManager';
 
 const ChapterNavigator = ({ onChapterSelect, currentChapter, currentVolume }) => {
   const {
@@ -33,6 +35,10 @@ const ChapterNavigator = ({ onChapterSelect, currentChapter, currentVolume }) =>
   const [volumeTitle, setVolumeTitle] = useState('');
   const [chapterTitle, setChapterTitle] = useState('');
   const [draggedItem, setDraggedItem] = useState(null);
+  const [showCoverManager, setShowCoverManager] = useState(false);
+  const [coverManagerType, setCoverManagerType] = useState('volume');
+  const [coverManagerItemId, setCoverManagerItemId] = useState(null);
+  const [openDropdown, setOpenDropdown] = useState(null);
 
   const toggleVolume = useCallback((volumeId) => {
     setExpandedVolumes(prev => {
@@ -112,6 +118,34 @@ const ChapterNavigator = ({ onChapterSelect, currentChapter, currentVolume }) =>
       toast.success('Capítulo excluído!');
     }
   }, [deleteChapter]);
+
+  const handleOpenCoverManager = useCallback((type, itemId) => {
+    setCoverManagerType(type);
+    setCoverManagerItemId(itemId);
+    setShowCoverManager(true);
+  }, []);
+
+  const handleDropdownToggle = useCallback((dropdownId) => {
+    setOpenDropdown(openDropdown === dropdownId ? null : dropdownId);
+  }, [openDropdown]);
+
+  const handleDropdownClose = useCallback(() => {
+    setOpenDropdown(null);
+  }, []);
+
+  // Fechar dropdown quando clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openDropdown && !event.target.closest('.dropdown-container')) {
+        setOpenDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openDropdown]);
 
   const handleDuplicateChapter = useCallback((volumeId, chapter) => {
     const newTitle = `${chapter.title} (Cópia)`;
@@ -217,11 +251,15 @@ const ChapterNavigator = ({ onChapterSelect, currentChapter, currentVolume }) =>
                     <span className="text-xs text-gray-500">
                       {getTotalWords(volume).toLocaleString()}
                     </span>
-                    <div className="relative group">
-                      <button className="p-1 hover:bg-gray-200 rounded transition-colors">
-                        <MoreHorizontal className="h-3 w-3" />
-                      </button>
-                      <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 hidden group-hover:block z-10 min-w-[140px]">
+                                         <div className="relative dropdown-container">
+                       <button 
+                         className="p-1 hover:bg-gray-200 rounded transition-colors"
+                         onClick={() => handleDropdownToggle(`volume-${volume.id}`)}
+                       >
+                         <MoreHorizontal className="h-3 w-3" />
+                       </button>
+                       {openDropdown === `volume-${volume.id}` && (
+                         <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 min-w-[140px]">
                         <button
                           onClick={() => handleEditVolume(volume)}
                           className="w-full px-3 py-1 text-left text-xs hover:bg-gray-50 flex items-center transition-colors"
@@ -238,14 +276,22 @@ const ChapterNavigator = ({ onChapterSelect, currentChapter, currentVolume }) =>
                         </button>
                         <div className="border-t border-gray-100 my-1"></div>
                         <button
-                          onClick={() => handleDeleteVolume(volume.id)}
-                          className="w-full px-3 py-1 text-left text-xs hover:bg-gray-50 text-red-600 flex items-center transition-colors"
+                          onClick={() => handleOpenCoverManager('volume', volume.id)}
+                          className="w-full px-3 py-1 text-left text-xs hover:bg-gray-50 flex items-center transition-colors"
                         >
-                          <Trash2 className="h-3 w-3 mr-2" />
-                          Excluir
+                          <Image className="h-3 w-3 mr-2" />
+                          Gerenciar Capa
                         </button>
-                      </div>
-                    </div>
+                                                 <button
+                           onClick={() => handleDeleteVolume(volume.id)}
+                           className="w-full px-3 py-1 text-left text-xs hover:bg-gray-50 text-red-600 flex items-center transition-colors"
+                         >
+                           <Trash2 className="h-3 w-3 mr-2" />
+                           Excluir
+                         </button>
+                       </div>
+                         )}
+                     </div>
                   </div>
                 </div>
 
@@ -255,13 +301,13 @@ const ChapterNavigator = ({ onChapterSelect, currentChapter, currentVolume }) =>
                     {volume.chapters.map((chapter) => {
                       const status = getChapterStatus(chapter);
                       return (
-                        <div
-                          key={chapter.id}
-                          className={`flex items-center p-2 rounded cursor-pointer hover:bg-gray-50 transition-colors ${
-                            currentChapter?.id === chapter.id ? 'bg-blue-50 border border-blue-200' : ''
-                          }`}
-                          onClick={() => onChapterSelect(volume, chapter)}
-                        >
+                                                 <div
+                           key={chapter.id}
+                           className={`flex items-center p-2 rounded cursor-pointer hover:bg-gray-50 transition-colors group ${
+                             currentChapter?.id === chapter.id ? 'bg-blue-50 border border-blue-200' : ''
+                           }`}
+                           onClick={() => onChapterSelect(volume, chapter)}
+                         >
                           <FileText className="h-4 w-4 mr-2 text-gray-500" />
                           
                           {editingChapter === chapter.id ? (
@@ -297,14 +343,22 @@ const ChapterNavigator = ({ onChapterSelect, currentChapter, currentVolume }) =>
                           )}
 
                           <div className="flex items-center space-x-1 ml-2">
-                            <div className="relative group">
-                              <button 
-                                className="p-1 hover:bg-gray-200 rounded opacity-0 group-hover:opacity-100 transition-all"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <MoreHorizontal className="h-3 w-3" />
-                              </button>
-                              <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 hidden group-hover:block z-10 min-w-[140px]">
+                                                         <div className="relative dropdown-container">
+                               <button 
+                                 className="p-1 hover:bg-gray-200 rounded opacity-0 group-hover:opacity-100 transition-all"
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   handleDropdownToggle(`chapter-${chapter.id}`);
+                                 }}
+                                 onMouseEnter={(e) => {
+                                   e.stopPropagation();
+                                   // Mostrar o botão no hover
+                                 }}
+                               >
+                                 <MoreHorizontal className="h-3 w-3" />
+                               </button>
+                               {openDropdown === `chapter-${chapter.id}` && (
+                                 <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 min-w-[140px]">
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -325,19 +379,30 @@ const ChapterNavigator = ({ onChapterSelect, currentChapter, currentVolume }) =>
                                   <Copy className="h-3 w-3 mr-2" />
                                   Duplicar
                                 </button>
-                                <div className="border-t border-gray-100 my-1"></div>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleDeleteChapter(volume.id, chapter.id);
+                                    handleOpenCoverManager('chapter', chapter.id);
                                   }}
-                                  className="w-full px-3 py-1 text-left text-xs hover:bg-gray-50 text-red-600 flex items-center transition-colors"
+                                  className="w-full px-3 py-1 text-left text-xs hover:bg-gray-50 flex items-center transition-colors"
                                 >
-                                  <Trash2 className="h-3 w-3 mr-2" />
-                                  Excluir
+                                  <Image className="h-3 w-3 mr-2" />
+                                  Gerenciar Capa
                                 </button>
-                              </div>
-                            </div>
+                                <div className="border-t border-gray-100 my-1"></div>
+                                                                 <button
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     handleDeleteChapter(volume.id, chapter.id);
+                                   }}
+                                   className="w-full px-3 py-1 text-left text-xs hover:bg-gray-50 text-red-600 flex items-center transition-colors"
+                                 >
+                                   <Trash2 className="h-3 w-3 mr-2" />
+                                   Excluir
+                                 </button>
+                               </div>
+                                 )}
+                             </div>
                           </div>
                         </div>
                       );
@@ -358,6 +423,15 @@ const ChapterNavigator = ({ onChapterSelect, currentChapter, currentVolume }) =>
           </div>
         )}
       </div>
+
+      {/* Cover Manager Modal */}
+      {showCoverManager && (
+        <CoverManager
+          onClose={() => setShowCoverManager(false)}
+          type={coverManagerType}
+          itemId={coverManagerItemId}
+        />
+      )}
     </div>
   );
 };

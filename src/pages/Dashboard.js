@@ -18,11 +18,14 @@ import useStore from '../store/useStore';
 import AIIntegration from '../components/AI/AIIntegration';
 import ConsistencyChecker from '../components/editor/ConsistencyChecker';
 import NovelReader from '../components/editor/NovelReader';
+import LightNovelPDFExporter from '../components/editor/LightNovelPDFExporter';
+import PDFExporterTest from '../components/editor/PDFExporterTest';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [showConsistencyChecker, setShowConsistencyChecker] = React.useState(false);
   const [showNovelReader, setShowNovelReader] = React.useState(false);
+  const [showPDFExporter, setShowPDFExporter] = React.useState(false);
   const { 
     currentProject, 
     projects, 
@@ -267,6 +270,25 @@ const Dashboard = () => {
         </button>
       </div>
 
+      {/* PDF Exporter */}
+      <div className="card">
+        <h3 className="text-lg font-semibold text-foreground mb-4">
+          Exportação Profissional
+        </h3>
+        <button
+          onClick={() => setShowPDFExporter(true)}
+          className="btn-secondary flex items-center bg-green-600 hover:bg-green-700 text-white"
+        >
+          <FileText className="mr-2 h-4 w-4" />
+          Exportar PDF Profissional
+        </button>
+        
+        {/* Teste do Exportador */}
+        <div className="mt-4">
+          <PDFExporterTest />
+        </div>
+      </div>
+
       {/* Quick Actions */}
       <div className="card">
         <h3 className="text-lg font-semibold text-foreground mb-4">
@@ -381,6 +403,11 @@ const Dashboard = () => {
       {/* Modal de Leitor de Light Novel */}
       {showNovelReader && (
         <NovelReader onClose={() => setShowNovelReader(false)} />
+      )}
+
+      {/* Modal de Exportador de PDF Profissional */}
+      {showPDFExporter && (
+        <LightNovelPDFExporter onClose={() => setShowPDFExporter(false)} />
       )}
     </div>
   );

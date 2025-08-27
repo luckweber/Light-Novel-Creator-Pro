@@ -33,6 +33,7 @@ import AdvancedAnalytics from '../components/analytics/AdvancedAnalytics';
 import BackupManager from '../components/backup/BackupManager';
 import ConsistencyChecker from '../components/editor/ConsistencyChecker';
 import NovelReader from '../components/editor/NovelReader';
+import LightNovelPDFExporter from '../components/editor/LightNovelPDFExporter';
 
 const Editor = () => {
   const { 
@@ -67,6 +68,7 @@ const Editor = () => {
   const [showConsistencyChecker, setShowConsistencyChecker] = useState(false);
   const [showNovelReader, setShowNovelReader] = useState(false);
   const [showToolsDropdown, setShowToolsDropdown] = useState(false);
+  const [showPDFExporter, setShowPDFExporter] = useState(false);
   const [sessionStartTime, setSessionStartTime] = useState(Date.now());
   const quillRef = useRef(null);
   const autoSaveTimeoutRef = useRef(null);
@@ -117,7 +119,7 @@ const Editor = () => {
     
     // Check writing progress for notifications
     checkWritingProgress(statistics.wordCount);
-  }, [statistics, checkWritingProgress]);
+  }, [statistics]);
 
   // Optimized auto-save functionality
   const handleAutoSave = useCallback(() => {
@@ -152,16 +154,17 @@ const Editor = () => {
     if (currentChapter && currentChapter.content !== editorContent) {
       setEditorContent(currentChapter.content || '');
     }
-  }, [currentChapter, setEditorContent]);
+  }, [currentChapter, editorContent]);
 
   // Monitor writing session for notifications
   useEffect(() => {
     // Start session monitoring when component mounts
-    setSessionStartTime(Date.now());
+    const startTime = Date.now();
+    setSessionStartTime(startTime);
     
     // Check session duration every 5 minutes
     sessionIntervalRef.current = setInterval(() => {
-      const sessionDuration = Date.now() - sessionStartTime;
+      const sessionDuration = Date.now() - startTime;
       checkWritingSession(sessionDuration);
     }, 5 * 60 * 1000); // 5 minutes
 
@@ -170,7 +173,7 @@ const Editor = () => {
         clearInterval(sessionIntervalRef.current);
       }
     };
-  }, [sessionStartTime, checkWritingSession, editorContent]);
+  }, [checkWritingSession]);
 
   // Optimized CSS application - only run once after mount
   useEffect(() => {
@@ -190,7 +193,7 @@ const Editor = () => {
     // Apply styles after a short delay to ensure Quill is rendered
     const timer = setTimeout(applyEditorStyles, 100);
     return () => clearTimeout(timer);
-  }, [editorContent]);
+  }, []); // Run only once on mount
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -546,13 +549,21 @@ const Editor = () => {
               <Sparkles className="mr-2 h-4 w-4" />
               AI Helper
             </button>
-            <button
-              onClick={() => setIsPreview(!isPreview)}
-              className="btn-outline flex items-center"
-            >
-              {isPreview ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
-              {isPreview ? 'Editar' : 'Visualizar'}
-            </button>
+                         <button
+               onClick={() => setIsPreview(!isPreview)}
+               className="btn-outline flex items-center"
+             >
+               {isPreview ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+               {isPreview ? 'Editar' : 'Visualizar'}
+             </button>
+             
+             <button
+               onClick={() => setShowPDFExporter(true)}
+               className="btn-secondary flex items-center bg-green-600 hover:bg-green-700 text-white"
+             >
+               <FileText className="mr-2 h-4 w-4" />
+               Exportar PDF
+             </button>
 
             {/* Dropdown de Ferramentas */}
             <div className="relative">
@@ -616,6 +627,16 @@ const Editor = () => {
                     >
                       <Book className="mr-3 h-4 w-4" />
                       Leitor Virtual
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowPDFExporter(true);
+                        setShowToolsDropdown(false);
+                      }}
+                      className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <FileText className="mr-3 h-4 w-4" />
+                      Exportar PDF Profissional
                     </button>
                   </div>
                 </div>
@@ -921,6 +942,11 @@ const Editor = () => {
       {/* Modal de Leitor de Light Novel */}
       {showNovelReader && (
         <NovelReader onClose={() => setShowNovelReader(false)} />
+      )}
+
+      {/* Modal de Exportador de PDF Profissional */}
+      {showPDFExporter && (
+        <LightNovelPDFExporter onClose={() => setShowPDFExporter(false)} />
       )}
     </div>
   );
