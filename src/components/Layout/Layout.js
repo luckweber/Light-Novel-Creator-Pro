@@ -26,6 +26,7 @@ import useStore from '../../store/useStore';
 import toast from 'react-hot-toast';
 import NotificationCenter from '../notifications/NotificationCenter';
 import GlobalSearch from '../search/GlobalSearch';
+import FloatingAIAgent from '../AI/FloatingAIAgent';
 
 const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -414,6 +415,9 @@ const Layout = ({ children }) => {
           onClick={() => setSidebarOpen(false)}
         />
       )}
+
+      {/* Floating AI Agent */}
+      <FloatingAIAgent />
     </div>
   );
 };
