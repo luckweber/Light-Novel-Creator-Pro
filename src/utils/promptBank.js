@@ -860,7 +860,171 @@ Forneça insights sobre:
 1. Estrutura narrativa recomendada
 2. Elementos que podem ser explorados
 3. Pontos de tensão e desenvolvimento
-4. Oportunidades narrativas`
+4. Oportunidades narrativas`,
+
+    interdependencyAnalysis: `Analise as interdependências entre elementos do mundo.
+
+${RULES.jsonFormat}
+
+Considere:
+- Relacionamentos obrigatórios
+- Relacionamentos opcionais
+- Consistência de relacionamentos
+- Oportunidades de conexões
+
+Formato exato:
+{
+  "interdependencyScore": 90,
+  "missingRelationships": [
+    {
+      "elementType": "character",
+      "elementName": "Nome do Personagem",
+      "requiredRelationship": "people",
+      "reason": "Personagem deve pertencer a um povo"
+    }
+  ],
+  "suggestedConnections": [
+    {
+      "sourceType": "character",
+      "sourceName": "Nome do Personagem",
+      "targetType": "location",
+      "targetName": "Nome do Local",
+      "relationshipType": "lives_in",
+      "reasoning": "Personagem poderia viver neste local"
+    }
+  ],
+  "inconsistencies": [
+    {
+      "description": "Descrição da inconsistência",
+      "severity": "high|medium|low",
+      "suggestion": "Sugestão de correção"
+    }
+  ],
+  "opportunities": [
+    {
+      "description": "Oportunidade narrativa",
+      "impact": "high|medium|low",
+      "implementation": "Como implementar"
+    }
+  ]
+}`
+  },
+
+  // Prompts para interdependências
+  interdependencies: {
+    relationshipValidation: `Valide os relacionamentos entre elementos do mundo.
+
+${RULES.jsonFormat}
+
+Considere:
+- Relacionamentos obrigatórios
+- Lógica narrativa
+- Consistência cultural
+- Possibilidades de desenvolvimento
+
+Formato exato:
+{
+  "valid": true,
+  "issues": [
+    {
+      "type": "missing_required_relationship",
+      "elementType": "character",
+      "elementName": "Nome do Elemento",
+      "requiredRelationship": "people",
+      "message": "Personagem deve pertencer a um povo"
+    }
+  ],
+  "suggestions": [
+    {
+      "type": "relationship_suggestion",
+      "sourceType": "character",
+      "sourceName": "Nome do Personagem",
+      "targetType": "people",
+      "targetName": "Nome do Povo",
+      "relationshipType": "belongs_to",
+      "reasoning": "Explicação da sugestão"
+    }
+  ],
+  "score": 85
+}`,
+
+    intelligentSuggestions: `Gere sugestões inteligentes para relacionamentos entre elementos.
+
+${RULES.jsonFormat}
+
+Considere:
+- Contexto do mundo
+- Lógica narrativa
+- Riqueza cultural
+- Desenvolvimento de história
+
+Formato exato:
+{
+  "suggestions": [
+    {
+      "type": "relationship_type",
+      "sourceType": "element_type",
+      "sourceName": "Nome do Elemento",
+      "targetType": "target_element_type",
+      "targetName": "Nome do Elemento Alvo",
+      "relationshipType": "relationship_type",
+      "reasoning": "Explicação da sugestão",
+      "priority": "high|medium|low",
+      "narrativeImpact": "Impacto na narrativa"
+    }
+  ],
+  "warnings": [
+    {
+      "type": "warning_type",
+      "message": "Mensagem de aviso",
+      "severity": "high|medium|low"
+    }
+  ],
+  "opportunities": [
+    {
+      "description": "Oportunidade narrativa",
+      "potentialImpact": "Impacto potencial",
+      "implementation": "Como implementar"
+    }
+  ]
+}`,
+
+    conflictResolution: `Resolva conflitos e inconsistências entre relacionamentos.
+
+${RULES.jsonFormat}
+
+Considere:
+- Identificar conflitos
+- Propor soluções
+- Manter consistência
+- Preservar narrativa
+
+Formato exato:
+{
+  "conflicts": [
+    {
+      "type": "conflict_type",
+      "description": "Descrição do conflito",
+      "elements": ["Elemento 1", "Elemento 2"],
+      "severity": "high|medium|low"
+    }
+  ],
+  "resolutions": [
+    {
+      "conflictType": "conflict_type",
+      "solution": "Solução proposta",
+      "impact": "Impacto da solução",
+      "implementation": "Como implementar"
+    }
+  ],
+  "preventiveMeasures": [
+    {
+      "measure": "Medida preventiva",
+      "description": "Descrição da medida",
+      "effectiveness": "high|medium|low"
+    }
+  ]
+}`
   }
 };
 

@@ -50,23 +50,13 @@ import {
   locationTypes,
   subMenus
 } from '../data/worldBuilderConstants';
-import EconomyFormModal from '../components/world_builder/EconomyFormModal';
-import LocationFormModal from '../components/world_builder/LocationFormModal';
-import PeopleFormModal from '../components/world_builder/PeopleFormModal';
-import ReligionFormModal from '../components/world_builder/ReligionFormModal';
-import RegionFormModal from '../components/world_builder/RegionFormModal';
-import LandmarkFormModal from '../components/world_builder/LandmarkFormModal';
-import EventFormModal from '../components/world_builder/EventFormModal';
-import MagicSystemFormModal from '../components/world_builder/MagicSystemFormModal';
-import LanguageFormModal from '../components/world_builder/LanguageFormModal';
-import TraditionFormModal from '../components/world_builder/TraditionFormModal';
-import ResourceFormModal from '../components/world_builder/ResourceFormModal';
-import TechnologyFormModal from '../components/world_builder/TechnologyFormModal';
-import GovernmentFormModal from '../components/world_builder/GovernmentFormModal';
+import UniversalFormModal from '../components/world_builder/UniversalFormModal';
 import SideMenu from '../components/world_builder/SideMenu';
 import AIAgent from '../components/AI/AIAgent';
 import { useAIAgent } from '../hooks/useAIAgent';
 import { createUnifiedPromptIntegration } from '../utils/unifiedPromptIntegration';
+import { useInterdependencySystem } from '../utils/interdependencySystem';
+import InterdependencyManager from '../components/analytics/InterdependencyManager';
 
 /**
  * WorldBuilder - Componente principal para construção de mundos
@@ -130,7 +120,8 @@ const WorldBuilder = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [activeSubTab, setActiveSubTab] = useState('');
   const [viewMode, setViewMode] = useState('grid');
-  const [formType, setFormType] = useState(null); // 'location', 'people', etc.
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalType, setModalType] = useState(null); // 'landmark', 'location', 'people', etc.
   const [editingItem, setEditingItem] = useState(null);
   
   // Agente de IA
@@ -163,8 +154,37 @@ const WorldBuilder = () => {
     if (typeof value === 'string') {
       return value;
     } else if (value && typeof value === 'object') {
+      // Para objetos como 'examples' em idiomas, renderiza de forma mais legível
+      if (value.constructor === Object) {
+        const entries = Object.entries(value);
+        if (entries.length > 0) {
+          return (
+            <div className="space-y-1">
+              {entries.map(([key, val], index) => (
+                <div key={index} className="text-sm">
+                  <span className="font-medium text-muted-foreground">{key}:</span>{' '}
+                  <span className="text-foreground">{String(val)}</span>
+                </div>
+              ))}
+            </div>
+          );
+        }
+      }
+      // Para arrays, renderiza como lista
+      if (Array.isArray(value)) {
+        return (
+          <div className="space-y-1">
+            {value.map((item, index) => (
+              <div key={index} className="text-sm text-foreground">
+                • {String(item)}
+              </div>
+            ))}
+          </div>
+        );
+      }
+      // Para outros objetos, usa JSON.stringify como fallback
       return JSON.stringify(value);
-    } else {
+      } else {
       return 'Valor não disponível';
     }
   };
@@ -211,7 +231,7 @@ const WorldBuilder = () => {
   // Estados de interface
   const [showStats, setShowStats] = useState(true);
   const [expandedCards, setExpandedCards] = useState({});
-  
+
   // Estados para confirmação de exclusão e controle de requisições
   const [deleteConfirmation, setDeleteConfirmation] = useState({ show: false, item: null, type: null });
   const [requestStates, setRequestStates] = useState({
@@ -230,6 +250,19 @@ const WorldBuilder = () => {
     resource: false,
     era: false
   });
+
+  // Funções para gerenciar o modal universal
+  const openModal = (type, item = null) => {
+    setModalType(type);
+    setEditingItem(item);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setModalType(null);
+    setEditingItem(null);
+  };
 
   // Função para verificar se uma requisição está em andamento
   const isRequestInProgress = (type) => {
@@ -480,20 +513,29 @@ const WorldBuilder = () => {
     );
   };
 
-  // Inicializar Unified Prompt Integration
-  useEffect(() => {
+  // Criar aiService usando useMemo
+  const aiService = useMemo(() => {
     if (aiProvider && settings?.aiProviders?.[aiProvider]) {
       const providerSettings = settings.aiProviders[aiProvider];
-      const aiService = new AIService(aiProvider, providerSettings.apiKey, {
+      return new AIService(aiProvider, providerSettings.apiKey, {
         model: providerSettings.defaultModel,
         temperature: providerSettings.temperature,
         maxTokens: providerSettings.maxTokens
       });
-      
+    }
+    return null;
+  }, [aiProvider, settings]);
+
+  // Inicializar sistema de interdependências
+  const interdependencySystem = useInterdependencySystem(worldData, aiService);
+
+  // Inicializar Unified Prompt Integration
+  useEffect(() => {
+    if (aiService) {
       const integration = createUnifiedPromptIntegration(worldData, aiService);
       setUnifiedPromptIntegration(integration);
     }
-  }, [aiProvider, settings, worldData]);
+  }, [aiService, worldData]);
 
   // Sincronizar estado com parâmetros da URL
   useEffect(() => {
@@ -1107,8 +1149,9 @@ const WorldBuilder = () => {
   }, [worldData]);
 
   // Handlers genéricos para salvar e deletar
-  const handleSave = (category, data) => {
-    const singularCategory = category.endsWith('s') ? category.slice(0, -1) : category;
+  const handleSave = (data) => {
+    const category = modalType + 's'; // Adiciona 's' para plural
+    const singularCategory = modalType;
     if (editingItem) {
       updateWorldItem(category, editingItem.id, data);
       toast.success(`${singularCategory.charAt(0).toUpperCase() + singularCategory.slice(1)} atualizado com sucesso!`);
@@ -1116,16 +1159,14 @@ const WorldBuilder = () => {
       addWorldItem(category, data);
       toast.success(`${singularCategory.charAt(0).toUpperCase() + singularCategory.slice(1)} adicionado com sucesso!`);
     }
-    setFormType(null);
-    setEditingItem(null);
+    closeModal();
   };
 
   const handleDelete = (category, id) => {
     const singularCategory = category.endsWith('s') ? category.slice(0, -1) : category;
     deleteWorldItem(category, id);
     toast.success(`${singularCategory.charAt(0).toUpperCase() + singularCategory.slice(1)} excluído com sucesso!`);
-    setFormType(null);
-    setEditingItem(null);
+    closeModal();
   };
 
   // Renderizar visão geral
@@ -1501,7 +1542,7 @@ const WorldBuilder = () => {
 
           {/* Botão adicionar */}
           <button
-            onClick={() => setFormType('location')}
+            onClick={() => openModal('location')}
             className="btn-primary flex items-center"
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -1536,7 +1577,7 @@ const WorldBuilder = () => {
           </p>
           <div className="flex justify-center space-x-3">
             <button 
-              onClick={() => setFormType('location')}
+              onClick={() => openModal('location')}
               className="btn-primary"
             >
               Adicionar Manualmente
@@ -1590,7 +1631,7 @@ const WorldBuilder = () => {
   const LocationCard = ({ location }) => {
     const locationTypeInfo = locationTypes.find(t => t.value === location.type) || locationTypes[0];
     const isExpanded = expandedCards[location.id];
-    
+
     // Mapear ícones de string para componentes
     const getIconComponent = (iconName) => {
       const iconMap = {
@@ -1614,30 +1655,30 @@ const WorldBuilder = () => {
     const expandedContent = (
       <>
         {location.climate && typeof location.climate === 'string' && (
-          <div className="flex items-center text-sm">
-            <Sun className="h-4 w-4 text-orange-500 mr-2" />
-            <span className="text-gray-600">Clima: {location.climate}</span>
-          </div>
-        )}
-        
+              <div className="flex items-center text-sm">
+                <Sun className="h-4 w-4 text-orange-500 mr-2" />
+                <span className="text-gray-600">Clima: {location.climate}</span>
+              </div>
+            )}
+            
         {location.population && typeof location.population === 'string' && (
-          <div className="flex items-center text-sm">
-            <Users className="h-4 w-4 text-blue-500 mr-2" />
-            <span className="text-gray-600">População: {location.population}</span>
-          </div>
-        )}
-        
-        {location.pointsOfInterest?.length > 0 && (
-          <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-2">Pontos de Interesse:</h4>
-            <ul className="text-sm text-gray-600 space-y-1">
-              {location.pointsOfInterest.map((point, index) => (
-                <li key={index} className="flex items-center">
-                  <Star className="h-3 w-3 text-yellow-500 mr-2 flex-shrink-0" />
+              <div className="flex items-center text-sm">
+                <Users className="h-4 w-4 text-blue-500 mr-2" />
+                <span className="text-gray-600">População: {location.population}</span>
+              </div>
+            )}
+            
+            {location.pointsOfInterest?.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-gray-900 mb-2">Pontos de Interesse:</h4>
+                <ul className="text-sm text-gray-600 space-y-1">
+                  {location.pointsOfInterest.map((point, index) => (
+                    <li key={index} className="flex items-center">
+                      <Star className="h-3 w-3 text-yellow-500 mr-2 flex-shrink-0" />
                   {typeof point === 'string' ? point : JSON.stringify(point)}
-                </li>
-              ))}
-            </ul>
+                    </li>
+                  ))}
+                </ul>
           </div>
         )}
 
@@ -1656,8 +1697,7 @@ const WorldBuilder = () => {
         subtitle={locationTypeInfo.label}
         description={location.description}
         onEdit={(item) => {
-          setEditingItem(item);
-          setFormType('location');
+          openModal('location', item);
         }}
         onDelete={true}
         // Funcionalidade de expandir/recolher
@@ -1674,7 +1714,7 @@ const WorldBuilder = () => {
   // Componente de item de lista
   const LocationListItem = ({ location }) => {
     const locationTypeInfo = locationTypes.find(t => t.value === location.type) || locationTypes[0];
-    
+
     // Mapear ícones de string para componentes
     const getIconComponent = (iconName) => {
       const iconMap = {
@@ -1704,8 +1744,7 @@ const WorldBuilder = () => {
         subtitle={locationTypeInfo.label}
         description={location.description}
         onEdit={(item) => {
-          setEditingItem(item);
-          setFormType('location');
+          openModal('location', item);
         }}
         onDelete={true}
         className="flex items-center justify-between p-4"
@@ -1729,7 +1768,7 @@ const WorldBuilder = () => {
           </p>
           <div className="flex justify-center space-x-3">
             <button 
-              onClick={() => setFormType('region')}
+              onClick={() => openModal('region')}
               className="btn-primary"
             >
               Adicionar Região
@@ -1762,7 +1801,7 @@ const WorldBuilder = () => {
           </h3>
           <div className="flex space-x-2">
             <button 
-              onClick={() => setFormType('region')}
+              onClick={() => openModal('region')}
               className="btn-primary"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -1798,13 +1837,11 @@ const WorldBuilder = () => {
               subtitle="Região"
               description={region.description}
               onEdit={(item) => {
-                setEditingItem(item);
-                setFormType('region');
+                openModal('region', item);
               }}
               onDelete={true}
               onClick={() => {
-                setEditingItem(region);
-                setFormType('region');
+                openModal('region', region);
               }}
             >
               {region.climate && typeof region.climate === 'string' && (
@@ -1853,7 +1890,7 @@ const WorldBuilder = () => {
           </p>
           <div className="flex justify-center space-x-3">
             <button 
-              onClick={() => setFormType('landmark')}
+              onClick={() => openModal('landmark')}
               className="btn-primary"
             >
               Adicionar Marco
@@ -1886,7 +1923,7 @@ const WorldBuilder = () => {
           </h3>
           <div className="flex space-x-2">
             <button 
-              onClick={() => setFormType('landmark')}
+              onClick={() => openModal('landmark')}
               className="btn-primary"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -1922,13 +1959,11 @@ const WorldBuilder = () => {
               subtitle={landmark.type || "Marco"}
               description={landmark.description}
               onEdit={(item) => {
-                setEditingItem(item);
-                setFormType('landmark');
+                openModal('landmark', item);
               }}
               onDelete={true}
               onClick={() => {
-                setEditingItem(landmark);
-                setFormType('landmark');
+                openModal('landmark', landmark);
               }}
             >
               {landmark.significance && typeof landmark.significance === 'string' && (
@@ -1970,7 +2005,7 @@ const WorldBuilder = () => {
           </p>
           <div className="flex justify-center space-x-3">
             <button 
-              onClick={() => setFormType('resource')}
+              onClick={() => openModal('resource')}
               className="btn-primary"
             >
               Adicionar Recurso
@@ -2003,7 +2038,7 @@ const WorldBuilder = () => {
           </h3>
           <div className="flex space-x-2">
             <button 
-              onClick={() => setFormType('resource')}
+              onClick={() => openModal('resource')}
               className="btn-primary"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -2039,13 +2074,11 @@ const WorldBuilder = () => {
               subtitle={resource.type || "Recurso"}
               description={resource.description}
               onEdit={(item) => {
-                setEditingItem(item);
-                setFormType('resource');
+                openModal('resource', item);
               }}
               onDelete={true}
               onClick={() => {
-                setEditingItem(resource);
-                setFormType('resource');
+                openModal('resource', resource);
               }}
             >
               {resource.rarity && (
@@ -2151,7 +2184,7 @@ const WorldBuilder = () => {
 
           {/* Botão adicionar */}
           <button
-            onClick={() => setFormType('people')}
+            onClick={() => openModal('people')}
             className="btn-primary flex items-center"
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -2183,7 +2216,7 @@ const WorldBuilder = () => {
           </p>
           <div className="flex justify-center space-x-3">
             <button 
-              onClick={() => setFormType('people')}
+              onClick={() => openModal('people')}
               className="btn-primary"
             >
               Adicionar Povo
@@ -2211,8 +2244,7 @@ const WorldBuilder = () => {
               key={people.id}
               people={people}
               onClick={() => {
-                setFormType('people');
-                setEditingItem(people);
+                openModal('people', people);
               }}
             />
           ))}
@@ -2238,14 +2270,14 @@ const WorldBuilder = () => {
           <div className="flex items-center text-sm">
             <Heart className="h-4 w-4 text-red-500 mr-2" />
             <span className="text-gray-600">Cultura: {people.culture}</span>
-          </div>
+            </div>
         )}
         
         {people.technology && (
           <div className="flex items-center text-sm">
             <Zap className="h-4 w-4 text-yellow-500 mr-2" />
             <span className="text-gray-600">Tecnologia: {people.technology}</span>
-          </div>
+            </div>
         )}
         
         {people.socialStructure && (
@@ -2277,8 +2309,7 @@ const WorldBuilder = () => {
         subtitle={people.classification}
         description={people.description}
         onEdit={(item) => {
-          setEditingItem(item);
-          setFormType('people');
+          openModal('people', item);
         }}
         onDelete={true}
         onClick={onClick}
@@ -2309,7 +2340,7 @@ const WorldBuilder = () => {
           </p>
           <div className="flex justify-center space-x-3">
             <button 
-              onClick={() => setFormType('language')}
+              onClick={() => openModal('language')}
               className="btn-primary"
             >
               Adicionar Idioma
@@ -2336,7 +2367,7 @@ const WorldBuilder = () => {
           </h3>
           <div className="flex space-x-2">
             <button 
-              onClick={() => setFormType('language')}
+              onClick={() => openModal('language')}
               className="btn-primary"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -2365,13 +2396,11 @@ const WorldBuilder = () => {
               title={language.name}
               description={language.description}
               onEdit={(item) => {
-                setEditingItem(item);
-                setFormType('language');
+                openModal('language', item);
               }}
               onDelete={true}
               onClick={() => {
-                setEditingItem(language);
-                setFormType('language');
+                openModal('language', language);
               }}
             >
               {language.family && (
@@ -2417,7 +2446,7 @@ const WorldBuilder = () => {
           </p>
           <div className="flex justify-center space-x-3">
             <button 
-              onClick={() => setFormType('religion')}
+              onClick={() => openModal('religion')}
               className="btn-primary"
             >
               Adicionar Religião
@@ -2444,7 +2473,7 @@ const WorldBuilder = () => {
           </h3>
           <div className="flex space-x-2">
             <button 
-              onClick={() => setFormType('religion')}
+              onClick={() => openModal('religion')}
               className="btn-primary"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -2474,37 +2503,35 @@ const WorldBuilder = () => {
               subtitle={religion.type || 'Religião'}
               description={renderDescription(religion.description)}
               onEdit={(item) => {
-                setEditingItem(item);
-                setFormType('religion');
+                openModal('religion', item);
               }}
               onDelete={true}
               onClick={() => {
-                setEditingItem(religion);
-                setFormType('religion');
+                openModal('religion', religion);
               }}
             >
               <div className="space-y-2">
-                {religion.deities && (
+              {religion.deities && (
                   <div>
-                    <span className="text-xs font-medium text-gray-500">Divindades:</span>
-                    <p className="text-sm text-gray-700 line-clamp-2">{religion.deities}</p>
-                  </div>
-                )}
+                  <span className="text-xs font-medium text-gray-500">Divindades:</span>
+                  <p className="text-sm text-gray-700 line-clamp-2">{religion.deities}</p>
+                </div>
+              )}
 
-                {religion.practices && (
+              {religion.practices && (
                   <div>
-                    <span className="text-xs font-medium text-gray-500">Práticas:</span>
-                    <p className="text-sm text-gray-700 line-clamp-2">{religion.practices}</p>
-                  </div>
-                )}
+                  <span className="text-xs font-medium text-gray-500">Práticas:</span>
+                  <p className="text-sm text-gray-700 line-clamp-2">{religion.practices}</p>
+                </div>
+              )}
 
-                {religion.followers && (
-                  <div>
-                    <span className="text-xs font-medium text-gray-500">Seguidores:</span>
-                    <p className="text-sm text-gray-700">{religion.followers}</p>
-                  </div>
-                )}
-              </div>
+              {religion.followers && (
+                <div>
+                  <span className="text-xs font-medium text-gray-500">Seguidores:</span>
+                  <p className="text-sm text-gray-700">{religion.followers}</p>
+                </div>
+              )}
+            </div>
             </StandardCard>
           ))}
         </div>
@@ -2528,7 +2555,7 @@ const WorldBuilder = () => {
           </p>
           <div className="flex justify-center space-x-3">
             <button 
-              onClick={() => setFormType('tradition')}
+              onClick={() => openModal('tradition')}
               className="btn-primary"
             >
               Adicionar Tradição
@@ -2555,7 +2582,7 @@ const WorldBuilder = () => {
           </h3>
           <div className="flex space-x-2">
             <button 
-              onClick={() => setFormType('tradition')}
+              onClick={() => openModal('tradition')}
               className="btn-primary"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -2585,29 +2612,27 @@ const WorldBuilder = () => {
               subtitle={tradition.type}
               description={renderDescription(tradition.description)}
               onEdit={(item) => {
-                setEditingItem(item);
-                setFormType('tradition');
+                openModal('tradition', item);
               }}
               onDelete={true}
               onClick={() => {
-                setEditingItem(tradition);
-                setFormType('tradition');
+                openModal('tradition', tradition);
               }}
             >
               <div className="space-y-2">
-                {tradition.origin && (
+              {tradition.origin && (
                   <div>
-                    <span className="text-xs font-medium text-gray-500">Origem:</span>
-                    <p className="text-sm text-gray-700 line-clamp-2">{tradition.origin}</p>
-                  </div>
-                )}
-                {tradition.frequency && (
-                  <div>
-                    <span className="text-xs font-medium text-gray-500">Frequência:</span>
-                    <p className="text-sm text-gray-700">{tradition.frequency}</p>
-                  </div>
-                )}
-              </div>
+                  <span className="text-xs font-medium text-gray-500">Origem:</span>
+                  <p className="text-sm text-gray-700 line-clamp-2">{tradition.origin}</p>
+                </div>
+              )}
+              {tradition.frequency && (
+                <div>
+                  <span className="text-xs font-medium text-gray-500">Frequência:</span>
+                  <p className="text-sm text-gray-700">{tradition.frequency}</p>
+                </div>
+              )}
+            </div>
             </StandardCard>
           ))}
         </div>
@@ -2646,7 +2671,7 @@ const WorldBuilder = () => {
           <div className="flex justify-center space-x-3">
             <button 
               className="btn-primary"
-              onClick={() => setFormType('magicSystem')}
+              onClick={() => openModal('magicSystem')}
             >
               Adicionar Sistema de Magia
             </button>
@@ -2672,7 +2697,7 @@ const WorldBuilder = () => {
           </h3>
           <div className="flex space-x-2">
             <button 
-              onClick={() => setFormType('magicSystem')}
+              onClick={() => openModal('magicSystem')}
               className="btn-primary"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -2701,22 +2726,22 @@ const WorldBuilder = () => {
                   <div className="flex items-center text-sm">
                     <Brain className="h-4 w-4 text-purple-500 mr-2" />
                     <span className="text-gray-600">Fonte: {system.source}</span>
-                  </div>
+              </div>
                 )}
 
                 {system.limitations && typeof system.limitations === 'string' && (
                   <div className="flex items-start text-sm">
                     <Zap className="h-4 w-4 text-red-500 mr-2 mt-0.5" />
                     <span className="text-gray-600">Limitações: {system.limitations}</span>
-                  </div>
-                )}
+                </div>
+              )}
 
                 {system.rules && typeof system.rules === 'string' && (
                   <div className="flex items-start text-sm">
                     <Book className="h-4 w-4 text-blue-500 mr-2 mt-0.5" />
                     <span className="text-gray-600">Regras: {system.rules}</span>
-                  </div>
-                )}
+                </div>
+              )}
 
                 {/* Renderizar campos que podem ser objetos */}
                 {renderObjectFields(system)}
@@ -2733,13 +2758,11 @@ const WorldBuilder = () => {
                 title={system.name}
                 description={system.description}
                 onEdit={(item) => {
-                  setEditingItem(item);
-                  setFormType('magicSystem');
+                  openModal('magicSystem', item);
                 }}
                 onDelete={true}
                 onClick={() => {
-                  setEditingItem(system);
-                  setFormType('magicSystem');
+                  openModal('magicSystem', system);
                 }}
                 // Funcionalidade de expandir/recolher
                 expandable={true}
@@ -2772,7 +2795,7 @@ const WorldBuilder = () => {
           </p>
           <div className="flex justify-center space-x-3">
             <button
-              onClick={() => setFormType('technology')}
+              onClick={() => openModal('technology')}
               className="btn-primary"
             >
               Adicionar Tecnologia
@@ -2799,7 +2822,7 @@ const WorldBuilder = () => {
           </h3>
           <div className="flex space-x-2">
             <button
-              onClick={() => setFormType('technology')}
+              onClick={() => openModal('technology')}
               className="btn-primary"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -2828,13 +2851,11 @@ const WorldBuilder = () => {
               title={tech.name}
               description={tech.description}
               onEdit={(item) => {
-                setEditingItem(item);
-                setFormType('technology');
+                openModal('technology', item);
               }}
               onDelete={true}
               onClick={() => {
-                setEditingItem(tech);
-                setFormType('technology');
+                openModal('technology', tech);
               }}
             >
               {tech.level && (
@@ -2874,7 +2895,7 @@ const WorldBuilder = () => {
           </p>
           <div className="flex justify-center space-x-3">
             <button
-              onClick={() => setFormType('government')}
+              onClick={() => openModal('government')}
               className="btn-primary"
             >
               Adicionar Sistema Político
@@ -2901,7 +2922,7 @@ const WorldBuilder = () => {
           </h3>
           <div className="flex space-x-2">
             <button
-              onClick={() => setFormType('government')}
+              onClick={() => openModal('government')}
               className="btn-primary"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -2930,13 +2951,11 @@ const WorldBuilder = () => {
               title={gov.name}
               description={gov.description}
               onEdit={(item) => {
-                setEditingItem(item);
-                setFormType('government');
+                openModal('government', item);
               }}
               onDelete={true}
               onClick={() => {
-                setEditingItem(gov);
-                setFormType('government');
+                openModal('government', gov);
               }}
             >
               {gov.type && (
@@ -2976,7 +2995,7 @@ const WorldBuilder = () => {
           </p>
           <div className="flex justify-center space-x-3">
             <button
-              onClick={() => setFormType('economy')}
+              onClick={() => openModal('economy')}
               className="btn-primary"
             >
               Adicionar Sistema Econômico
@@ -3003,7 +3022,7 @@ const WorldBuilder = () => {
           </h3>
           <div className="flex space-x-2">
             <button
-              onClick={() => setFormType('economy')}
+              onClick={() => openModal('economy')}
               className="btn-primary"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -3032,13 +3051,11 @@ const WorldBuilder = () => {
               title={eco.name}
               description={eco.description}
               onEdit={(item) => {
-                setEditingItem(item);
-                setFormType('economy');
+                openModal('economy', item);
               }}
               onDelete={true}
               onClick={() => {
-                setEditingItem(eco);
-                setFormType('economy');
+                openModal('economy', eco);
               }}
             >
               {eco.currency && (
@@ -3098,7 +3115,7 @@ const WorldBuilder = () => {
           </div>
           <div className="flex space-x-2">
             <button 
-              onClick={() => setFormType('event')}
+              onClick={() => openModal('event')}
               className="btn-primary"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -3125,8 +3142,7 @@ const WorldBuilder = () => {
               <div className="absolute left-12 top-1/2 -translate-y-1/2 w-4 h-4 bg-red-500 rounded-full border-2 border-white" />
               <div className="ml-12 pl-8 bg-white p-4 rounded-lg border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
                    onClick={() => {
-                     setEditingItem(event);
-                     setFormType('event');
+                     openModal('event', event);
                    }}>
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
@@ -3144,7 +3160,7 @@ const WorldBuilder = () => {
                       onClick={(e) => {
                         e.stopPropagation();
                         setEditingItem(event);
-                        setFormType('event');
+                        openModal('event');
                       }}
                       className="text-gray-400 hover:text-gray-600 p-1"
                     >
@@ -3161,7 +3177,7 @@ const WorldBuilder = () => {
               <p className="mb-6">Adicione eventos para construir a linha do tempo do seu mundo.</p>
               <div className="flex justify-center space-x-3">
                 <button 
-                  onClick={() => setFormType('event')}
+                  onClick={() => openModal('event')}
                   className="btn-primary"
                 >
                   Adicionar Evento
@@ -3199,12 +3215,12 @@ const WorldBuilder = () => {
           </p>
           <div className="flex justify-center space-x-3">
             <button 
-              onClick={() => setFormType('era')}
+              onClick={() => openModal('era')}
               className="btn-primary"
             >
               <Plus className="h-4 w-4 mr-2" />
               Adicionar Era
-            </button>
+                  </button>
             {aiProvider && (
               <AIGenerateButton
                 type="era"
@@ -3213,9 +3229,9 @@ const WorldBuilder = () => {
               >
                 Gerar com IA
               </AIGenerateButton>
-            )}
-          </div>
-        </div>
+                )}
+              </div>
+            </div>
       );
     }
 
@@ -3227,7 +3243,7 @@ const WorldBuilder = () => {
           </h3>
           <div className="flex space-x-2">
             <button
-              onClick={() => setFormType('era')}
+              onClick={() => openModal('era')}
               className="btn-primary"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -3288,13 +3304,12 @@ const WorldBuilder = () => {
                 title={era.name}
                 description={era.description}
                 onEdit={(item) => {
-                  setEditingItem(item);
-                  setFormType('era');
+                  openModal('era', item);
                 }}
                 onDelete={true}
                 onClick={() => {
                   setEditingItem(era);
-                  setFormType('era');
+                  openModal('era');
                 }}
                 // Funcionalidade de expandir/recolher
                 expandable={true}
@@ -3481,11 +3496,40 @@ const WorldBuilder = () => {
   const renderAnalytics = () => {
     return (
       <div className="space-y-6 animate-fade-in">
+        {/* Subabas do Analytics */}
+        <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
+          <button
+            onClick={() => setActiveSubTab('statistics')}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              activeSubTab === 'statistics' || activeSubTab === ''
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Estatísticas
+          </button>
+          <button
+            onClick={() => setActiveSubTab('relationships')}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              activeSubTab === 'relationships'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Interdependências
+          </button>
+        </div>
 
         {/* Conteúdo */}
+        {activeSubTab === 'relationships' ? (
+          <InterdependencyManager />
+        ) : (
+          <>
         {activeSubTab === 'statistics' && renderStatistics()}
         {activeSubTab === 'insights' && renderInsights()}
         {activeSubTab === 'reports' && renderReports()}
+          </>
+        )}
       </div>
     );
   };
@@ -3772,193 +3816,9 @@ const WorldBuilder = () => {
         </div>
       </div>
 
-      {/* Modals */}
-      {formType === 'location' && (
-        <LocationFormModal
-          location={editingItem}
-          onClose={() => setFormType(null)}
-          onSave={(data) => {
-            if (editingItem) {
-              updateWorldItem('locations', editingItem.id, data);
-            } else {
-              addWorldItem('locations', data);
-            }
-            setFormType(null);
-            setEditingItem(null);
-          }}
-          onDelete={(id) => {
-            deleteWorldItem('locations', id);
-            toast.success('Local excluído com sucesso!');
-            setFormType(null);
-            setEditingItem(null);
-          }}
-          aiProvider={aiProvider}
-          isGenerating={isGenerating}
-          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateLocation.bind(unifiedPromptIntegration) : null}
-        />
-      )}
+      {/* Modal Universal */}
 
-      {formType === 'people' && (
-        <PeopleFormModal
-          people={editingItem}
-          onClose={() => {
-            setFormType(null);
-            setEditingItem(null);
-          }}
-          onSave={(data) => {
-            if (editingItem) {
-              updateWorldItem('peoples', editingItem.id, data);
-            } else {
-              addWorldItem('peoples', data);
-            }
-            setFormType(null);
-            setEditingItem(null);
-          }}
-          onDelete={(id) => {
-            deleteWorldItem('peoples', id);
-            toast.success('Povo excluído com sucesso!');
-            setFormType(null);
-            setEditingItem(null);
-          }}
-          aiProvider={aiProvider}
-          isGenerating={isGenerating}
-          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generatePeople.bind(unifiedPromptIntegration) : null}
-        />
-      )}
-
-      {formType === 'magicSystem' && (
-        <MagicSystemFormModal
-          system={editingItem}
-          onClose={() => setFormType(null)}
-          onSave={(data) => handleSave('magicSystems', data)}
-          onDelete={(id) => handleDelete('magicSystems', id)}
-          aiProvider={aiProvider}
-          isGenerating={isGenerating}
-          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateMagicSystem.bind(unifiedPromptIntegration) : null}
-        />
-      )}
-
-      {formType === 'event' && (
-        <EventFormModal
-          event={editingItem}
-          onClose={() => setFormType(null)}
-          onSave={(data) => handleSave('events', data)}
-          onDelete={(id) => handleDelete('events', id)}
-          aiProvider={aiProvider}
-          isGenerating={isGenerating}
-          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateEvent.bind(unifiedPromptIntegration) : null}
-        />
-      )}
-
-      {formType === 'language' && (
-        <LanguageFormModal
-          language={editingItem}
-          onClose={() => setFormType(null)}
-          onSave={(data) => handleSave('languages', data)}
-          onDelete={(id) => handleDelete('languages', id)}
-          aiProvider={aiProvider}
-          isGenerating={isGenerating}
-          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateLanguage.bind(unifiedPromptIntegration) : null}
-        />
-      )}
-
-      {formType === 'religion' && (
-        <ReligionFormModal
-          religion={editingItem}
-          onClose={() => setFormType(null)}
-          onSave={(data) => handleSave('religions', data)}
-          onDelete={(id) => handleDelete('religions', id)}
-          aiProvider={aiProvider}
-          isGenerating={isGenerating}
-          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateReligion.bind(unifiedPromptIntegration) : null}
-        />
-      )}
-
-      {formType === 'tradition' && (
-        <TraditionFormModal
-          tradition={editingItem}
-          onClose={() => setFormType(null)}
-          onSave={(data) => handleSave('traditions', data)}
-          onDelete={(id) => handleDelete('traditions', id)}
-          aiProvider={aiProvider}
-          isGenerating={isGenerating}
-          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateTradition.bind(unifiedPromptIntegration) : null}
-        />
-      )}
-
-      {formType === 'region' && (
-        <RegionFormModal
-          region={editingItem}
-          onClose={() => setFormType(null)}
-          onSave={(data) => handleSave('regions', data)}
-          onDelete={(id) => handleDelete('regions', id)}
-          aiProvider={aiProvider}
-          isGenerating={isGenerating}
-          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateRegion.bind(unifiedPromptIntegration) : null}
-        />
-      )}
-
-      {formType === 'landmark' && (
-        <LandmarkFormModal
-          landmark={editingItem}
-          onClose={() => setFormType(null)}
-          onSave={(data) => handleSave('landmarks', data)}
-          onDelete={(id) => handleDelete('landmarks', id)}
-          aiProvider={aiProvider}
-          isGenerating={isGenerating}
-          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateLandmark.bind(unifiedPromptIntegration) : null}
-        />
-      )}
-
-      {formType === 'resource' && (
-        <ResourceFormModal
-          resource={editingItem}
-          onClose={() => setFormType(null)}
-          onSave={(data) => handleSave('resources', data)}
-          onDelete={(id) => handleDelete('resources', id)}
-          aiProvider={aiProvider}
-          isGenerating={isGenerating}
-          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateResource.bind(unifiedPromptIntegration) : null}
-        />
-      )}
-
-      {formType === 'technology' && (
-        <TechnologyFormModal
-          technology={editingItem}
-          onClose={() => setFormType(null)}
-          onSave={(data) => handleSave('technologies', data)}
-          onDelete={(id) => handleDelete('technologies', id)}
-          aiProvider={aiProvider}
-          isGenerating={isGenerating}
-          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateTechnology.bind(unifiedPromptIntegration) : null}
-        />
-      )}
-
-      {formType === 'government' && (
-        <GovernmentFormModal
-          government={editingItem}
-          onClose={() => setFormType(null)}
-          onSave={(data) => handleSave('governments', data)}
-          onDelete={(id) => handleDelete('governments', id)}
-          aiProvider={aiProvider}
-          isGenerating={isGenerating}
-          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateGovernment.bind(unifiedPromptIntegration) : null}
-        />
-      )}
-
-      {formType === 'economy' && (
-        <EconomyFormModal
-          economy={editingItem}
-          onClose={() => setFormType(null)}
-          onSave={(data) => handleSave('economies', data)}
-          onDelete={(id) => handleDelete('economies', id)}
-          aiProvider={aiProvider}
-          isGenerating={isGenerating}
-          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateEconomy.bind(unifiedPromptIntegration) : null}
-        />
-      )}
-
-      {formType === 'era' && (
+      {modalType === 'era' && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
@@ -3966,7 +3826,7 @@ const WorldBuilder = () => {
                 {editingItem ? 'Editar Era' : 'Nova Era'}
               </h2>
               <button
-                onClick={() => setFormType(null)}
+                onClick={() => closeModal()}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <span className="sr-only">Fechar</span>
@@ -4127,7 +3987,7 @@ const WorldBuilder = () => {
                 
                 <button
                   type="button"
-                  onClick={() => setFormType(null)}
+                  onClick={() => closeModal()}
                   className="btn-ghost"
                 >
                   Cancelar
@@ -4143,6 +4003,17 @@ const WorldBuilder = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Modal Universal */}
+      {modalType && (
+        <UniversalFormModal
+          isOpen={isModalOpen}
+          onClose={closeModal}
+          onSave={handleSave}
+          itemType={modalType}
+          item={editingItem}
+        />
       )}
 
       {/* Agente de IA */}

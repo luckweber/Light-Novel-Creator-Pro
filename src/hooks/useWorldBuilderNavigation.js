@@ -24,7 +24,8 @@ const routeMapping = {
   '/world-builder/history/eras': { tab: 'history', subTab: 'eras' },
   '/world-builder/analytics': { tab: 'analytics', subTab: '' },
   '/world-builder/analytics/statistics': { tab: 'analytics', subTab: 'statistics' },
-  '/world-builder/analytics/relationships': { tab: 'analytics', subTab: 'relationships' }
+  '/world-builder/analytics/relationships': { tab: 'analytics', subTab: 'relationships' },
+  '/world-builder/analytics/interdependencies': { tab: 'analytics', subTab: 'relationships' }
 };
 
 // Mapeamento reverso de tabs/subTabs para rotas
@@ -59,7 +60,8 @@ const reverseRouteMapping = {
   analytics: {
     '': '/world-builder/analytics',
     statistics: '/world-builder/analytics/statistics',
-    relationships: '/world-builder/analytics/relationships'
+    relationships: '/world-builder/analytics/relationships',
+    interdependencies: '/world-builder/analytics/relationships'
   }
 };
 

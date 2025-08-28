@@ -2,23 +2,23 @@ import { exportBackup } from './exportUtils';
 
 // Configurações do sistema de backup
 const BACKUP_CONFIG = {
-  // Backup automático a cada 5 minutos
-  AUTO_BACKUP_INTERVAL: 5 * 60 * 1000,
+  // Backup automático a cada 15 minutos (reduzido para evitar quota)
+  AUTO_BACKUP_INTERVAL: 15 * 60 * 1000,
   
-  // Manter apenas os últimos 10 backups automáticos
-  MAX_AUTO_BACKUPS: 10,
+  // Manter apenas os últimos 5 backups automáticos (reduzido)
+  MAX_AUTO_BACKUPS: 5,
   
-  // Backup manual - manter os últimos 50
-  MAX_MANUAL_BACKUPS: 50,
+  // Backup manual - manter os últimos 20 (reduzido)
+  MAX_MANUAL_BACKUPS: 20,
   
-  // Backup de segurança - manter os últimos 5
-  MAX_SAFETY_BACKUPS: 5,
+  // Backup de segurança - manter os últimos 3 (reduzido)
+  MAX_SAFETY_BACKUPS: 3,
   
-  // Intervalo para backup de segurança (1 hora)
-  SAFETY_BACKUP_INTERVAL: 60 * 60 * 1000,
+  // Intervalo para backup de segurança (2 horas) (aumentado)
+  SAFETY_BACKUP_INTERVAL: 2 * 60 * 60 * 1000,
   
-  // Tamanho máximo do backup (50MB)
-  MAX_BACKUP_SIZE: 50 * 1024 * 1024
+  // Tamanho máximo do backup (10MB) (reduzido)
+  MAX_BACKUP_SIZE: 10 * 1024 * 1024
 };
 
 class BackupManager {
@@ -87,13 +87,31 @@ class BackupManager {
       }
 
       // Salvar backup
-      localStorage.setItem(backupKey, backupString);
-      
-      // Atualizar metadados
-      this.updateBackupMetadata(backupKey, 'auto');
-      
-      // Limpar backups antigos
-      this.cleanupOldBackups();
+      try {
+        localStorage.setItem(backupKey, backupString);
+        
+        // Atualizar metadados
+        this.updateBackupMetadata(backupKey, 'auto');
+        
+        // Limpar backups antigos
+        this.cleanupOldBackups();
+      } catch (error) {
+        if (error.name === 'QuotaExceededError') {
+          console.warn('Quota excedida, limpando backups antigos...');
+          this.cleanupOldBackups();
+          
+          // Tentar novamente após limpeza
+          try {
+            localStorage.setItem(backupKey, backupString);
+            this.updateBackupMetadata(backupKey, 'auto');
+          } catch (retryError) {
+            console.error('Falha ao salvar backup mesmo após limpeza:', retryError);
+            return;
+          }
+        } else {
+          throw error;
+        }
+      }
       
       console.log('Backup automático realizado com sucesso');
       
@@ -324,51 +342,110 @@ class BackupManager {
 
   // Limpar backups antigos
   cleanupOldBackups() {
-    const metadata = this.getBackupMetadata();
-    const { backups } = metadata;
-    
-    // Separar por tipo
-    const autoBackups = backups.filter(b => b.type === 'auto');
-    const manualBackups = backups.filter(b => b.type === 'manual');
-    const safetyBackups = backups.filter(b => b.type === 'safety');
-    
-    // Limpar backups automáticos antigos
-    if (autoBackups.length > BACKUP_CONFIG.MAX_AUTO_BACKUPS) {
-      const toRemove = autoBackups
-        .sort((a, b) => a.timestamp - b.timestamp)
-        .slice(0, autoBackups.length - BACKUP_CONFIG.MAX_AUTO_BACKUPS);
+    try {
+      const metadata = this.getBackupMetadata();
+      const { backups } = metadata;
       
-      toRemove.forEach(backup => {
-        localStorage.removeItem(backup.key);
-        metadata.backups = metadata.backups.filter(b => b.key !== backup.key);
-      });
-    }
-    
-    // Limpar backups manuais antigos
-    if (manualBackups.length > BACKUP_CONFIG.MAX_MANUAL_BACKUPS) {
-      const toRemove = manualBackups
-        .sort((a, b) => a.timestamp - b.timestamp)
-        .slice(0, manualBackups.length - BACKUP_CONFIG.MAX_MANUAL_BACKUPS);
+      // Verificar se há erro de quota e fazer limpeza mais agressiva
+      const isQuotaExceeded = this.checkQuotaExceeded();
       
-      toRemove.forEach(backup => {
-        localStorage.removeItem(backup.key);
-        metadata.backups = metadata.backups.filter(b => b.key !== backup.key);
-      });
-    }
-    
-    // Limpar backups de segurança antigos
-    if (safetyBackups.length > BACKUP_CONFIG.MAX_SAFETY_BACKUPS) {
-      const toRemove = safetyBackups
-        .sort((a, b) => a.timestamp - b.timestamp)
-        .slice(0, safetyBackups.length - BACKUP_CONFIG.MAX_SAFETY_BACKUPS);
+      // Separar por tipo
+      const autoBackups = backups.filter(b => b.type === 'auto');
+      const manualBackups = backups.filter(b => b.type === 'manual');
+      const safetyBackups = backups.filter(b => b.type === 'safety');
       
-      toRemove.forEach(backup => {
-        localStorage.removeItem(backup.key);
-        metadata.backups = metadata.backups.filter(b => b.key !== backup.key);
-      });
+      // Se há erro de quota, limpar mais backups
+      const maxAutoBackups = isQuotaExceeded ? Math.max(1, BACKUP_CONFIG.MAX_AUTO_BACKUPS / 2) : BACKUP_CONFIG.MAX_AUTO_BACKUPS;
+      const maxManualBackups = isQuotaExceeded ? Math.max(5, BACKUP_CONFIG.MAX_MANUAL_BACKUPS / 2) : BACKUP_CONFIG.MAX_MANUAL_BACKUPS;
+      const maxSafetyBackups = isQuotaExceeded ? Math.max(2, BACKUP_CONFIG.MAX_SAFETY_BACKUPS / 2) : BACKUP_CONFIG.MAX_SAFETY_BACKUPS;
+      
+      // Limpar backups automáticos antigos
+      if (autoBackups.length > maxAutoBackups) {
+        const toRemove = autoBackups
+          .sort((a, b) => a.timestamp - b.timestamp)
+          .slice(0, autoBackups.length - maxAutoBackups);
+        
+        toRemove.forEach(backup => {
+          try {
+            localStorage.removeItem(backup.key);
+          } catch (e) {
+            console.warn('Erro ao remover backup:', backup.key, e);
+          }
+          metadata.backups = metadata.backups.filter(b => b.key !== backup.key);
+        });
+      }
+      
+      // Limpar backups manuais antigos
+      if (manualBackups.length > maxManualBackups) {
+        const toRemove = manualBackups
+          .sort((a, b) => a.timestamp - b.timestamp)
+          .slice(0, manualBackups.length - maxManualBackups);
+        
+        toRemove.forEach(backup => {
+          try {
+            localStorage.removeItem(backup.key);
+          } catch (e) {
+            console.warn('Erro ao remover backup:', backup.key, e);
+          }
+          metadata.backups = metadata.backups.filter(b => b.key !== backup.key);
+        });
+      }
+      
+      // Limpar backups de segurança antigos
+      if (safetyBackups.length > maxSafetyBackups) {
+        const toRemove = safetyBackups
+          .sort((a, b) => a.timestamp - b.timestamp)
+          .slice(0, safetyBackups.length - maxSafetyBackups);
+        
+        toRemove.forEach(backup => {
+          try {
+            localStorage.removeItem(backup.key);
+          } catch (e) {
+            console.warn('Erro ao remover backup:', backup.key, e);
+          }
+          metadata.backups = metadata.backups.filter(b => b.key !== backup.key);
+        });
+      }
+      
+      // Se ainda há erro de quota, limpar todos os backups exceto os mais recentes
+      if (isQuotaExceeded && backups.length > 10) {
+        const sortedBackups = backups.sort((a, b) => b.timestamp - a.timestamp);
+        const toKeep = sortedBackups.slice(0, 10);
+        const toRemove = sortedBackups.slice(10);
+        
+        toRemove.forEach(backup => {
+          try {
+            localStorage.removeItem(backup.key);
+          } catch (e) {
+            console.warn('Erro ao remover backup:', backup.key, e);
+          }
+        });
+        
+        metadata.backups = toKeep;
+      }
+      
+      try {
+        localStorage.setItem('backupMetadata', JSON.stringify(metadata));
+      } catch (e) {
+        console.warn('Erro ao salvar metadados de backup:', e);
+      }
+    } catch (error) {
+      console.error('Erro durante limpeza de backups:', error);
     }
-    
-    localStorage.setItem('backupMetadata', JSON.stringify(metadata));
+  }
+
+  // Verificar se há erro de quota
+  checkQuotaExceeded() {
+    try {
+      // Tenta salvar um item pequeno para testar a quota
+      const testKey = `quota_test_${Date.now()}`;
+      const testValue = 'test';
+      localStorage.setItem(testKey, testValue);
+      localStorage.removeItem(testKey);
+      return false;
+    } catch (error) {
+      return error.name === 'QuotaExceededError';
+    }
   }
 
   // Obter estatísticas de backup

@@ -3,6 +3,7 @@
 
 import { BASE_PROMPTS, PromptUtils } from './promptBank';
 import { PromptManager, DynamicPromptGenerator, PromptTemplate } from './promptTools';
+import { cleanAIResponse as cleanResponseHelper, cleanAIResponseSync } from './cleanAIResponse';
 
 export class UnifiedPromptIntegration {
   constructor(worldData, aiService) {
@@ -85,6 +86,13 @@ export class UnifiedPromptIntegration {
       this.promptManager.registerTemplate(template);
     });
 
+    // Registra prompts de interdependências
+    Object.entries(BASE_PROMPTS.interdependencies).forEach(([key, prompt]) => {
+      const template = new PromptTemplate(`interdependencies_${key}`, prompt)
+        .withMetadata({ category: 'interdependencies', type: key });
+      this.promptManager.registerTemplate(template);
+    });
+
     // Registra prompts de informações do mundo
     Object.entries(BASE_PROMPTS.worldInfo).forEach(([key, prompt]) => {
       const template = new PromptTemplate(`worldInfo_${key}`, prompt)
@@ -98,7 +106,7 @@ export class UnifiedPromptIntegration {
     const promptName = `geography_location_${type}`;
     const context = this.buildWorldContext();
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    const parsedResult = this.cleanAIResponse(result);
+    const parsedResult = await this.cleanAIResponse(result, 'location');
     
     // Se o parsing falhou, retorna um local básico como fallback
     if (!parsedResult) {
@@ -113,7 +121,7 @@ export class UnifiedPromptIntegration {
     const promptName = 'cultures_people';
     const context = this.buildWorldContext();
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    const parsedResult = this.cleanAIResponse(result);
+    const parsedResult = await this.cleanAIResponse(result, 'people');
     
     // Se o parsing falhou, retorna um povo básico como fallback
     if (!parsedResult) {
@@ -128,7 +136,7 @@ export class UnifiedPromptIntegration {
     const promptName = 'history_event';
     const context = this.buildWorldContext();
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    const parsedResult = this.cleanAIResponse(result);
+    const parsedResult = await this.cleanAIResponse(result, 'event');
     
     // Se o parsing falhou, retorna um evento básico como fallback
     if (!parsedResult) {
@@ -153,7 +161,7 @@ export class UnifiedPromptIntegration {
       const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
       console.log('Resultado bruto da IA:', result);
       
-      const parsedResult = this.cleanAIResponse(result);
+      const parsedResult = await this.cleanAIResponse(result, 'era');
       console.log('Resultado parseado:', parsedResult);
       
       // Se o parsing falhou, retorna uma era básica como fallback
@@ -173,7 +181,7 @@ export class UnifiedPromptIntegration {
     const promptName = 'systems_magic';
     const context = this.buildWorldContext();
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    const parsedResult = this.cleanAIResponse(result);
+    const parsedResult = await this.cleanAIResponse(result, 'magicSystem');
     
     // Se o parsing falhou, retorna um sistema mágico básico como fallback
     if (!parsedResult) {
@@ -188,7 +196,7 @@ export class UnifiedPromptIntegration {
     const promptName = 'cultures_religion';
     const context = this.buildWorldContext();
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    const parsedResult = this.cleanAIResponse(result);
+    const parsedResult = await this.cleanAIResponse(result, 'religion');
     
     // Se o parsing falhou, retorna uma religião básica como fallback
     if (!parsedResult) {
@@ -203,7 +211,7 @@ export class UnifiedPromptIntegration {
     const promptName = 'systems_technology';
     const context = this.buildWorldContext();
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    const parsedResult = this.cleanAIResponse(result);
+    const parsedResult = await this.cleanAIResponse(result, 'technology');
     
     // Se o parsing falhou, retorna uma tecnologia básica como fallback
     if (!parsedResult) {
@@ -218,7 +226,7 @@ export class UnifiedPromptIntegration {
     const promptName = 'systems_government';
     const context = this.buildWorldContext();
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    const parsedResult = this.cleanAIResponse(result);
+    const parsedResult = await this.cleanAIResponse(result, 'government');
     
     // Se o parsing falhou, retorna um governo básico como fallback
     if (!parsedResult) {
@@ -233,7 +241,7 @@ export class UnifiedPromptIntegration {
     const promptName = 'systems_economy';
     const context = this.buildWorldContext();
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    const parsedResult = this.cleanAIResponse(result);
+    const parsedResult = await this.cleanAIResponse(result, 'economy');
     
     // Se o parsing falhou, retorna uma economia básica como fallback
     if (!parsedResult) {
@@ -248,7 +256,7 @@ export class UnifiedPromptIntegration {
     const promptName = 'worldInfo_basic';
     const context = this.buildWorldContext();
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    return this.cleanAIResponse(result);
+    return await this.cleanAIResponse(result, 'basicInfo');
   }
 
   // Métodos adicionais para WorldBuilder
@@ -256,7 +264,7 @@ export class UnifiedPromptIntegration {
     const promptName = 'cultures_language';
     const context = this.buildWorldContext();
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    const parsedResult = this.cleanAIResponse(result);
+    const parsedResult = await this.cleanAIResponse(result, 'language');
     
     // Se o parsing falhou, retorna um idioma básico como fallback
     if (!parsedResult) {
@@ -271,7 +279,7 @@ export class UnifiedPromptIntegration {
     const promptName = 'cultures_tradition';
     const context = this.buildWorldContext();
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    const parsedResult = this.cleanAIResponse(result);
+    const parsedResult = await this.cleanAIResponse(result, 'tradition');
     
     // Se o parsing falhou, retorna uma tradição básica como fallback
     if (!parsedResult) {
@@ -286,7 +294,7 @@ export class UnifiedPromptIntegration {
     const promptName = 'geography_region';
     const context = this.buildWorldContext();
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    const parsedResult = this.cleanAIResponse(result);
+    const parsedResult = await this.cleanAIResponse(result, 'region');
     
     // Se o parsing falhou, retorna uma região básica como fallback
     if (!parsedResult) {
@@ -301,7 +309,7 @@ export class UnifiedPromptIntegration {
     const promptName = 'geography_landmark';
     const context = this.buildWorldContext();
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    const parsedResult = this.cleanAIResponse(result);
+    const parsedResult = await this.cleanAIResponse(result, 'landmark');
     
     // Se o parsing falhou, retorna um marco básico como fallback
     if (!parsedResult) {
@@ -316,7 +324,7 @@ export class UnifiedPromptIntegration {
     const promptName = 'geography_resource';
     const context = this.buildWorldContext();
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    const parsedResult = this.cleanAIResponse(result);
+    const parsedResult = await this.cleanAIResponse(result, 'resource');
     
     // Se o parsing falhou, retorna um recurso básico como fallback
     if (!parsedResult) {
@@ -335,7 +343,7 @@ export class UnifiedPromptIntegration {
       ...additionalContext
     };
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    const parsedResult = this.cleanAIResponse(result);
+    const parsedResult = await this.cleanAIResponse(result, 'character');
     
     // Se o parsing falhou, retorna um personagem básico como fallback
     if (!parsedResult) {
@@ -353,7 +361,7 @@ export class UnifiedPromptIntegration {
       currentForm: characterForm
     };
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    return this.cleanAIResponse(result);
+    return await this.cleanAIResponse(result, 'characterField');
   }
 
   // Métodos para LoreGenerator
@@ -364,7 +372,7 @@ export class UnifiedPromptIntegration {
       ...additionalContext
     };
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    const parsedResult = this.cleanAIResponse(result);
+    const parsedResult = await this.cleanAIResponse(result, 'lore');
     
     // Se o parsing falhou, retorna um item de lore básico como fallback
     if (!parsedResult) {
@@ -383,7 +391,7 @@ export class UnifiedPromptIntegration {
       ...additionalContext
     };
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    return this.cleanAIResponse(result);
+    return await this.cleanAIResponse(result, 'narrative');
   }
 
   async generateNarrativeField(field, narrativeForm, activeTab) {
@@ -394,7 +402,7 @@ export class UnifiedPromptIntegration {
       activeTab: activeTab
     };
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    return this.cleanAIResponse(result);
+    return await this.cleanAIResponse(result, 'narrativeField');
   }
 
   // Métodos para AIAssistant
@@ -419,7 +427,7 @@ export class UnifiedPromptIntegration {
       chaptersCount: projectData?.chapters?.length || 0
     };
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    return this.cleanAIResponse(result);
+    return await this.cleanAIResponse(result, 'qualityTips');
   }
 
   async getQualityTips(worldData, projectData) {
@@ -442,7 +450,7 @@ export class UnifiedPromptIntegration {
       elementName
     };
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    return this.cleanAIResponse(result);
+    return await this.cleanAIResponse(result, 'elementPrompt');
   }
 
   async generateWithContext(prompt, context = {}) {
@@ -461,7 +469,7 @@ export class UnifiedPromptIntegration {
       actionType
     };
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    return this.cleanAIResponse(result);
+    return await this.cleanAIResponse(result, 'structuredData');
   }
 
   async testConnection() {
@@ -484,7 +492,7 @@ export class UnifiedPromptIntegration {
       ).length
     };
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    return this.cleanAIResponse(result);
+    return await this.cleanAIResponse(result, 'volumeInsights');
   }
 
   async generateProjectAnalysis(worldData, projectData) {
@@ -494,7 +502,7 @@ export class UnifiedPromptIntegration {
       projectData
     };
     const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
-    return this.cleanAIResponse(result);
+    return await this.cleanAIResponse(result, 'projectAnalysis');
   }
 
   // Métodos para análise inteligente
@@ -583,10 +591,19 @@ export class UnifiedPromptIntegration {
     return this.promptManager.listTemplates(category);
   }
 
-  // Método para limpar resposta da IA (mantido do WorldBuilder original)
-  cleanAIResponse(response) {
-    if (!response) return null;
-    
+  // Método para limpar resposta da IA usando IA (versão assíncrona)
+  async cleanAIResponse(response, fieldType = 'magicSystem') {
+    // Usa o helper externo para limpeza com IA
+    return await cleanResponseHelper(response, fieldType, this.aiService);
+  }
+
+  // Método síncrono para compatibilidade
+  cleanAIResponseSync(response, fieldType = 'magicSystem') {
+    // Versão síncrona para compatibilidade
+    return cleanAIResponseSync(response, fieldType);
+  }
+
+  cleanAIResponseOLD(response) {
     // Se a resposta já é um objeto (não uma string), retorna diretamente
     if (typeof response === 'object' && response !== null) {
       console.log('📦 Resposta já é um objeto, retornando diretamente:', response);
@@ -616,6 +633,8 @@ export class UnifiedPromptIntegration {
     // Verifica se o JSON está incompleto (faltando chave de fechamento)
     const openBraces = (cleaned.match(/\{/g) || []).length;
     const closeBraces = (cleaned.match(/\}/g) || []).length;
+    const openBrackets = (cleaned.match(/\[/g) || []).length;
+    const closeBrackets = (cleaned.match(/\]/g) || []).length;
     
     if (openBraces > closeBraces) {
       console.log('🔧 JSON incompleto detectado, adicionando chaves de fechamento...');
@@ -623,6 +642,13 @@ export class UnifiedPromptIntegration {
       const missingBraces = openBraces - closeBraces;
       cleaned += '}'.repeat(missingBraces);
       console.log('✅ Chaves de fechamento adicionadas:', missingBraces);
+    }
+    
+    if (openBrackets > closeBrackets) {
+      console.log('🔧 JSON incompleto detectado, adicionando colchetes de fechamento...');
+      const missingBrackets = openBrackets - closeBrackets;
+      cleaned += ']'.repeat(missingBrackets);
+      console.log('✅ Colchetes de fechamento adicionados:', missingBrackets);
     }
     
     // Remove quebras de linha e espaços extras
@@ -651,7 +677,139 @@ export class UnifiedPromptIntegration {
     // Corrige aspas não escapadas dentro de strings que contêm parênteses
     cleaned = cleaned.replace(/"([^"]*?)\(([^)]*?)"([^"]*?)"/g, '"$1\\($2\\)$3"');
     
-    // Tenta fazer parse do JSON
+    // Corrige caracteres escapados malformados
+    // Remove escapes desnecessários de aspas dentro de strings
+    cleaned = cleaned.replace(/\\"/g, '"');
+    cleaned = cleaned.replace(/\\\\/g, '\\');
+    
+    // Corrige parênteses escapados malformados
+    cleaned = cleaned.replace(/\\\(/g, '(');
+    cleaned = cleaned.replace(/\\\)/g, ')');
+    
+    // Remove escapes de caracteres que não precisam ser escapados
+    cleaned = cleaned.replace(/\\([^"\\\/bfnrt])/g, '$1');
+    
+    // Corrige aspas não escapadas dentro de strings (problema específico com exemplos de idiomas)
+    // Procura por padrões como "hello": ""kala'kha"" e corrige para "hello": "kala'kha"
+    cleaned = cleaned.replace(/"([^"]+)":\s*""([^"]+)""/g, '"$1": "$2"');
+    cleaned = cleaned.replace(/"([^"]+)":\s*"([^"]*)"([^"]*)"([^"]*)"/g, '"$1": "$2$3$4"');
+    
+    // Corrige problemas específicos com objetos aninhados que estão malformados
+    // Exemplo: "examples": { "hello": "Zhilakai, goodbye": "Korvathri" } -> "examples": { "hello": "Zhilakai", "goodbye": "Korvathri" }
+    cleaned = cleaned.replace(/"([^"]+)":\s*"([^"]+),\s*([^"]+)":\s*"([^"]+)"/g, '"$1": "$2", "$3": "$4"');
+    
+    // Corrige chaves de fechamento mal posicionadas dentro de strings
+    // Exemplo: "Focus": "texto }" -> "Focus": "texto"
+    cleaned = cleaned.replace(/"([^"]+)":\s*"([^"]*)\s*}\s*"/g, '"$1": "$2"');
+    cleaned = cleaned.replace(/"([^"]+)":\s*"([^"]*)\s*]\s*"/g, '"$1": "$2"');
+    
+         // Corrige aspas de fechamento mal posicionadas
+     // Exemplo: "Focus": "texto" } -> "Focus": "texto"
+     cleaned = cleaned.replace(/"([^"]+)":\s*"([^"]*)"\s*}/g, '"$1": "$2"');
+     cleaned = cleaned.replace(/"([^"]+)":\s*"([^"]*)"\s*]/g, '"$1": "$2"');
+     
+         // Corrige JSON incompleto que termina abruptamente
+    // Verifica se o JSON termina com aspas duplas sem chave de fechamento
+    if (cleaned.endsWith('"') && !cleaned.endsWith('"}')) {
+      cleaned += '}';
+      console.log('🔧 Adicionada chave de fechamento para JSON incompleto');
+    }
+    
+    // Corrige JSON que termina com espaço após a última propriedade
+    if (cleaned.endsWith('" ') && !cleaned.endsWith('" }')) {
+      cleaned = cleaned.trim() + '}';
+      console.log('🔧 Corrigido JSON que terminava com espaço');
+    }
+    
+    // Corrige JSON que termina abruptamente sem chave de fechamento
+    if (!cleaned.endsWith('}') && !cleaned.endsWith(']')) {
+      // Conta chaves abertas e fechadas
+      const openBraces = (cleaned.match(/\{/g) || []).length;
+      const closeBraces = (cleaned.match(/\}/g) || []).length;
+      const openBrackets = (cleaned.match(/\[/g) || []).length;
+      const closeBrackets = (cleaned.match(/\]/g) || []).length;
+      
+      // Adiciona chaves de fechamento necessárias
+      const missingBraces = openBraces - closeBraces;
+      const missingBrackets = openBrackets - closeBrackets;
+      
+      if (missingBraces > 0) {
+        cleaned += '}'.repeat(missingBraces);
+        console.log(`🔧 Adicionadas ${missingBraces} chaves de fechamento para JSON incompleto`);
+      }
+      
+      if (missingBrackets > 0) {
+        cleaned += ']'.repeat(missingBrackets);
+        console.log(`🔧 Adicionados ${missingBrackets} colchetes de fechamento para JSON incompleto`);
+      }
+    }
+    
+    // Remove caracteres problemáticos como bullet points (•) e quebras de linha dentro de strings
+    cleaned = cleaned.replace(/•/g, '-'); // Substitui bullet points por hífens
+    cleaned = cleaned.replace(/\n/g, ' '); // Remove quebras de linha
+    cleaned = cleaned.replace(/\r/g, ' '); // Remove retornos de carro
+    cleaned = cleaned.replace(/\t/g, ' '); // Remove tabs
+    
+    // Corrige strings que contêm caracteres problemáticos
+    cleaned = cleaned.replace(/"([^"]*?)(\n|\r|\t|•)([^"]*?)"/g, '"$1 $3"');
+     
+         // Corrige JSON aninhado malformado (problema específico com rules e limitations)
+    // Procura por padrões como "rules": "{key: "value","key2": "value2}"
+    cleaned = cleaned.replace(/"([^"]+)":\s*"\{([^}]+)\}"/g, (match, key, content) => {
+      // Escapa as aspas dentro do conteúdo JSON aninhado
+      const escapedContent = content.replace(/"/g, '\\"');
+      return `"${key}": "${escapedContent}"`;
+    });
+    
+    // Corrige JSON aninhado que não tem aspas nas chaves
+    // Exemplo: "rules": "{mana: "value","key2": "value2}" -> "rules": "{\"mana\": \"value\",\"key2\": \"value2\"}"
+    cleaned = cleaned.replace(/"([^"]+)":\s*"\{([^}]+)\}"/g, (match, key, content) => {
+      // Adiciona aspas nas chaves que não têm
+      const fixedContent = content.replace(/([a-zA-Z_][a-zA-Z0-9_]*):\s*"/g, '"$1": "');
+      return `"${key}": "{${fixedContent}}"`;
+    });
+    
+    // Corrige chaves malformadas em objetos aninhados (problema específico com "Advanced": {)
+    // Exemplo: Advanced": { -> "Advanced": {
+    cleaned = cleaned.replace(/([a-zA-Z_][a-zA-Z0-9_]*)"\s*:\s*\{/g, '"$1": {');
+    
+    // Corrige objetos aninhados que terminam sem chave de fechamento
+    // Procura por padrões como "Range": "texto } e adiciona chave de fechamento
+    cleaned = cleaned.replace(/"([^"]+)":\s*"([^"]*)\s*}\s*"/g, '"$1": "$2"');
+    
+    // Corrige objetos aninhados que terminam com chave de fechamento mal posicionada
+    // Exemplo: "Range": "texto } " -> "Range": "texto"
+    cleaned = cleaned.replace(/"([^"]+)":\s*"([^"]*)"\s*}\s*"/g, '"$1": "$2"');
+    
+    // Corrige objetos aninhados que terminam com chave de fechamento e vírgula mal posicionada
+    // Exemplo: "Range": "texto }, " -> "Range": "texto"
+    cleaned = cleaned.replace(/"([^"]+)":\s*"([^"]*)"\s*},\s*"/g, '"$1": "$2"');
+    
+    // Corrige objetos aninhados que terminam com chave de fechamento e aspas mal posicionadas
+    // Exemplo: "Range": "texto" } " -> "Range": "texto"
+    cleaned = cleaned.replace(/"([^"]+)":\s*"([^"]*)"\s*}\s*"/g, '"$1": "$2"');
+    
+    // Corrige chaves malformadas em objetos aninhados (problema específico com "Advanced": {)
+    // Exemplo: Advanced": { -> "Advanced": {
+    cleaned = cleaned.replace(/([a-zA-Z_][a-zA-Z0-9_]*)"\s*:\s*\{/g, '"$1": {');
+    
+    // Corrige objetos aninhados que terminam sem chave de fechamento
+    // Procura por padrões como "Range": "texto } e adiciona chave de fechamento
+    cleaned = cleaned.replace(/"([^"]+)":\s*"([^"]*)\s*}\s*"/g, '"$1": "$2"');
+    
+    // Corrige objetos aninhados que terminam com chave de fechamento mal posicionada
+    // Exemplo: "Range": "texto } " -> "Range": "texto"
+    cleaned = cleaned.replace(/"([^"]+)":\s*"([^"]*)"\s*}\s*"/g, '"$1": "$2"');
+    
+    // Corrige objetos aninhados que terminam com chave de fechamento e vírgula mal posicionada
+    // Exemplo: "Range": "texto }, " -> "Range": "texto"
+    cleaned = cleaned.replace(/"([^"]+)":\s*"([^"]*)"\s*},\s*"/g, '"$1": "$2"');
+    
+    // Corrige objetos aninhados que terminam com chave de fechamento e aspas mal posicionadas
+    // Exemplo: "Range": "texto" } " -> "Range": "texto"
+    cleaned = cleaned.replace(/"([^"]+)":\s*"([^"]*)"\s*}\s*"/g, '"$1": "$2"');
+     
+     // Tenta fazer parse do JSON
     try {
       const parsed = JSON.parse(cleaned);
       
@@ -1303,7 +1461,90 @@ export class UnifiedPromptIntegration {
     cleaned = cleaned.replace(/"([^"]*?)\(([^)]*?)"([^"]*?)"/g, '"$1\\($2\\)$3"');
     cleaned = cleaned.replace(/\(([^)]+)\)/g, '\\($1\\)');
     
-    // 7. Remove quebras de linha e tabs dentro de strings
+    // 6.6. Corrige caracteres escapados malformados
+    // Remove escapes desnecessários de aspas dentro de strings
+    cleaned = cleaned.replace(/\\"/g, '"');
+    cleaned = cleaned.replace(/\\\\/g, '\\');
+    
+    // Corrige parênteses escapados malformados
+    cleaned = cleaned.replace(/\\\(/g, '(');
+    cleaned = cleaned.replace(/\\\)/g, ')');
+    
+    // Remove escapes de caracteres que não precisam ser escapados
+    cleaned = cleaned.replace(/\\([^"\\\/bfnrt])/g, '$1');
+    
+    // 6.7. Corrige chaves de fechamento mal posicionadas dentro de strings
+    // Exemplo: "Focus": "texto }" -> "Focus": "texto"
+    cleaned = cleaned.replace(/"([^"]+)":\s*"([^"]*)\s*}\s*"/g, '"$1": "$2"');
+    cleaned = cleaned.replace(/"([^"]+)":\s*"([^"]*)\s*]\s*"/g, '"$1": "$2"');
+    
+    // Corrige aspas de fechamento mal posicionadas
+    // Exemplo: "Focus": "texto" } -> "Focus": "texto"
+    cleaned = cleaned.replace(/"([^"]+)":\s*"([^"]*)"\s*}/g, '"$1": "$2"');
+    cleaned = cleaned.replace(/"([^"]+)":\s*"([^"]*)"\s*]/g, '"$1": "$2"');
+    
+    // 6.8. Corrige JSON incompleto que termina abruptamente
+    // Verifica se o JSON termina com aspas duplas sem chave de fechamento
+    if (cleaned.endsWith('"') && !cleaned.endsWith('"}')) {
+      cleaned += '}';
+      console.log('🔧 Adicionada chave de fechamento para JSON incompleto (ultra-agressivo)');
+    }
+    
+    // Corrige JSON que termina com espaço após a última propriedade
+    if (cleaned.endsWith('" ') && !cleaned.endsWith('" }')) {
+      cleaned = cleaned.trim() + '}';
+      console.log('🔧 Corrigido JSON que terminava com espaço (ultra-agressivo)');
+    }
+    
+    // Corrige JSON que termina abruptamente sem chave de fechamento
+    if (!cleaned.endsWith('}') && !cleaned.endsWith(']')) {
+      // Conta chaves abertas e fechadas
+      const openBraces = (cleaned.match(/\{/g) || []).length;
+      const closeBraces = (cleaned.match(/\}/g) || []).length;
+      const openBrackets = (cleaned.match(/\[/g) || []).length;
+      const closeBrackets = (cleaned.match(/\]/g) || []).length;
+      
+      // Adiciona chaves de fechamento necessárias
+      const missingBraces = openBraces - closeBraces;
+      const missingBrackets = openBrackets - closeBrackets;
+      
+      if (missingBraces > 0) {
+        cleaned += '}'.repeat(missingBraces);
+        console.log(`🔧 Adicionadas ${missingBraces} chaves de fechamento para JSON incompleto (ultra-agressivo)`);
+      }
+      
+      if (missingBrackets > 0) {
+        cleaned += ']'.repeat(missingBrackets);
+        console.log(`🔧 Adicionados ${missingBrackets} colchetes de fechamento para JSON incompleto (ultra-agressivo)`);
+      }
+    }
+    
+    // Remove caracteres problemáticos como bullet points (•) e quebras de linha dentro de strings
+    cleaned = cleaned.replace(/•/g, '-'); // Substitui bullet points por hífens
+    cleaned = cleaned.replace(/\n/g, ' '); // Remove quebras de linha
+    cleaned = cleaned.replace(/\r/g, ' '); // Remove retornos de carro
+    cleaned = cleaned.replace(/\t/g, ' '); // Remove tabs
+    
+    // Corrige strings que contêm caracteres problemáticos
+    cleaned = cleaned.replace(/"([^"]*?)(\n|\r|\t|•)([^"]*?)"/g, '"$1 $3"');
+      
+      // 6.9. Corrige JSON aninhado malformado (problema específico com rules e limitations)
+      // Procura por padrões como "rules": "{key: "value","key2": "value2}"
+      cleaned = cleaned.replace(/"([^"]+)":\s*"\{([^}]+)\}"/g, (match, key, content) => {
+        // Escapa as aspas dentro do conteúdo JSON aninhado
+        const escapedContent = content.replace(/"/g, '\\"');
+        return `"${key}": "${escapedContent}"`;
+      });
+      
+      // Corrige JSON aninhado que não tem aspas nas chaves
+      // Exemplo: "rules": "{mana: "value","key2": "value2}" -> "rules": "{\"mana\": \"value\",\"key2\": \"value2\"}"
+      cleaned = cleaned.replace(/"([^"]+)":\s*"\{([^}]+)\}"/g, (match, key, content) => {
+        // Adiciona aspas nas chaves que não têm
+        const fixedContent = content.replace(/([a-zA-Z_][a-zA-Z0-9_]*):\s*"/g, '"$1": "');
+        return `"${key}": "{${fixedContent}}"`;
+      });
+     
+     // 7. Remove quebras de linha e tabs dentro de strings
     cleaned = cleaned.replace(/\\n/g, ' ');
     cleaned = cleaned.replace(/\\t/g, ' ');
     cleaned = cleaned.replace(/\\r/g, ' ');
@@ -1349,7 +1590,7 @@ export class UnifiedPromptIntegration {
         const reconstructed = this.reconstructJSON(cleaned);
         if (reconstructed) {
           console.log('✅ Reconstrução JSON bem-sucedida');
-          return reconstructed;
+          return JSON.stringify(reconstructed);
         }
       } catch (reconstructError) {
         console.log('❌ Reconstrução JSON falhou:', reconstructError.message);
@@ -1386,10 +1627,29 @@ export class UnifiedPromptIntegration {
         }
       });
       
+      // Se não conseguiu extrair propriedades, tenta uma abordagem mais simples
+      if (Object.keys(properties).length === 0) {
+        // Tenta extrair pelo menos o nome se estiver presente
+        const nameMatch = jsonString.match(/"name"\s*:\s*"([^"]+)"/);
+        if (nameMatch) {
+          properties.name = nameMatch[1];
+        }
+        
+        // Se ainda não tem propriedades, cria um objeto básico
+        if (Object.keys(properties).length === 0) {
+          properties.name = 'Item Gerado';
+          properties.description = 'Item gerado automaticamente';
+        }
+      }
+      
       return properties;
     } catch (error) {
       console.log('Erro na reconstrução:', error.message);
-      return null;
+      // Retorna um objeto básico como fallback
+      return {
+        name: 'Item Gerado',
+        description: 'Item gerado automaticamente devido a erro de parsing'
+      };
     }
   }
 
@@ -1416,6 +1676,36 @@ export class UnifiedPromptIntegration {
       console.log('📄 Usando resposta original (erro no parse JSON)');
       return response;
     }
+  }
+
+  // Métodos para interdependências
+  async analyzeInterdependencies() {
+    const promptName = 'analysis_interdependencyAnalysis';
+    const context = this.buildWorldContext();
+    const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
+    return await this.cleanAIResponse(result, 'interdependencies');
+  }
+
+  async validateRelationships() {
+    const promptName = 'interdependencies_relationshipValidation';
+    const context = this.buildWorldContext();
+    const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
+    return await this.cleanAIResponse(result, 'relationships');
+  }
+
+  async generateIntelligentSuggestions(elementType, elementData, context = {}) {
+    const promptName = 'interdependencies_intelligentSuggestions';
+    const worldContext = this.buildWorldContext();
+    const fullContext = { ...worldContext, elementType, elementData, ...context };
+    const result = await this.promptManager.executePrompt(promptName, fullContext, this.aiService);
+    return await this.cleanAIResponse(result, 'suggestions');
+  }
+
+  async resolveConflicts() {
+    const promptName = 'interdependencies_conflictResolution';
+    const context = this.buildWorldContext();
+    const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
+    return await this.cleanAIResponse(result, 'conflicts');
   }
 }
 
