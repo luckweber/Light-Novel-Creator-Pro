@@ -11,7 +11,11 @@ import {
   Star,
   Plus,
   X,
-  Check
+  Check,
+  Target,
+  Brain,
+  Search,
+  Trophy
 } from 'lucide-react';
 import useStore from '../../store/useStore';
 import toast from 'react-hot-toast';
@@ -299,6 +303,344 @@ const LightNovelTemplates = ({ onClose, onTemplateApplied }) => {
             role: 'amigo',
             description: 'Pessoa que entra na vida do protagonista',
             personality: 'Amigável, misterioso, com histórias para contar'
+          }
+        ]
+      }
+    },
+           {
+         id: 'harem',
+         name: 'Harem',
+         description: 'Protagonista cercado por múltiplos interesses românticos',
+         icon: Users,
+         color: 'text-pink-600',
+         bgColor: 'bg-pink-50 dark:bg-pink-900/20',
+      features: [
+        'Múltiplos interesses românticos',
+        'Desenvolvimento de relacionamentos',
+        'Conflitos emocionais',
+        'Comédia romântica',
+        'Escolhas difíceis'
+      ],
+      structure: {
+        volumes: [
+          {
+            title: 'Volume 1: O Início do Harem',
+            description: 'Primeiros encontros e desenvolvimento dos relacionamentos',
+            chapters: [
+              { title: 'Capítulo 1: A Transferência', wordCount: 3000 },
+              { title: 'Capítulo 2: Primeira Garota', wordCount: 3000 },
+              { title: 'Capítulo 3: Segunda Garota', wordCount: 3000 },
+              { title: 'Capítulo 4: Conflitos', wordCount: 3000 },
+              { title: 'Capítulo 5: A Escolha', wordCount: 3000 }
+            ]
+          }
+        ],
+        worldData: {
+          name: 'Academia Japonesa',
+          genre: 'Harem/Romance',
+          techLevel: 'Moderno',
+          locations: [
+            { name: 'Sala de Aula', type: 'sala', description: 'Local principal dos encontros' },
+            { name: 'Clube de Literatura', type: 'clube', description: 'Local de atividades' },
+            { name: 'Café da Escola', type: 'cafe', description: 'Local para conversas' }
+          ]
+        },
+        characters: [
+          {
+            name: 'Protagonista',
+            role: 'protagonista',
+            description: 'Estudante transferido',
+            personality: 'Gentil, confuso, com dificuldade em escolher'
+          },
+          {
+            name: 'Tsundere',
+            role: 'interesse-romantico',
+            description: 'Primeira garota do harem',
+            personality: 'Orgulhosa, mas carinhosa por dentro'
+          },
+          {
+            name: 'Yandere',
+            role: 'interesse-romantico',
+            description: 'Segunda garota do harem',
+            personality: 'Doce, mas possessiva e perigosa'
+          },
+          {
+            name: 'Kuudere',
+            role: 'interesse-romantico',
+            description: 'Terceira garota do harem',
+            personality: 'Fria e distante, mas com sentimentos profundos'
+          }
+        ]
+      }
+    },
+    {
+      id: 'mecha',
+      name: 'Mecha',
+      description: 'Robôs gigantes e batalhas espaciais',
+      icon: Target,
+      color: 'text-cyan-600',
+      bgColor: 'bg-cyan-50 dark:bg-cyan-900/20',
+      features: [
+        'Robôs gigantes (Mechas)',
+        'Batalhas espaciais',
+        'Tecnologia avançada',
+        'Conflitos militares',
+        'Pilotos especiais'
+      ],
+      structure: {
+        volumes: [
+          {
+            title: 'Volume 1: O Piloto',
+            description: 'Descoberta do talento e primeiras batalhas',
+            chapters: [
+              { title: 'Capítulo 1: O Despertar', wordCount: 4000 },
+              { title: 'Capítulo 2: Primeira Batalha', wordCount: 4000 },
+              { title: 'Capítulo 3: O Mecha', wordCount: 4000 },
+              { title: 'Capítulo 4: Aliados', wordCount: 4000 },
+              { title: 'Capítulo 5: A Missão', wordCount: 4000 }
+            ]
+          }
+        ],
+        worldData: {
+          name: 'Colônia Espacial',
+          genre: 'Mecha/Ação',
+          techLevel: 'Futurista',
+          technologies: [
+            {
+              name: 'Sistema de Mecha',
+              description: 'Robôs gigantes controlados por pilotos',
+              rules: ['Pilotos especiais necessários', 'Sincronização neural']
+            }
+          ],
+          locations: [
+            { name: 'Base Militar', type: 'base', description: 'Centro de operações' },
+            { name: 'Hangar de Mechas', type: 'hangar', description: 'Local dos robôs' }
+          ]
+        },
+        characters: [
+          {
+            name: 'Piloto de Mecha',
+            role: 'protagonista',
+            description: 'Jovem com talento natural',
+            personality: 'Determinado, corajoso, com senso de justiça'
+          },
+          {
+            name: 'Comandante',
+            role: 'mentor',
+            description: 'Líder militar',
+            personality: 'Rigoroso, experiente, com segredos'
+          }
+        ]
+      }
+    },
+    {
+      id: 'misterio',
+      name: 'Mistério/Suspense',
+      description: 'Histórias de investigação e suspense',
+      icon: Search,
+      color: 'text-indigo-600',
+      bgColor: 'bg-indigo-50 dark:bg-indigo-900/20',
+      features: [
+        'Investigação de crimes',
+        'Pistas e enigmas',
+        'Suspense psicológico',
+        'Revelações surpreendentes',
+        'Detetives e investigadores'
+      ],
+      structure: {
+        volumes: [
+          {
+            title: 'Volume 1: O Primeiro Caso',
+            description: 'Início da carreira de investigação',
+            chapters: [
+              { title: 'Capítulo 1: O Crime', wordCount: 3500 },
+              { title: 'Capítulo 2: Primeiras Pistas', wordCount: 3500 },
+              { title: 'Capítulo 3: A Investigação', wordCount: 3500 },
+              { title: 'Capítulo 4: Suspeitos', wordCount: 3500 },
+              { title: 'Capítulo 5: A Revelação', wordCount: 3500 }
+            ]
+          }
+        ],
+        worldData: {
+          name: 'Cidade Metropolitana',
+          genre: 'Mistério/Suspense',
+          techLevel: 'Moderno',
+          locations: [
+            { name: 'Delegacia', type: 'policia', description: 'Centro de investigações' },
+            { name: 'Cena do Crime', type: 'local', description: 'Local do primeiro caso' }
+          ]
+        },
+        characters: [
+          {
+            name: 'Detetive',
+            role: 'protagonista',
+            description: 'Investigador talentoso',
+            personality: 'Observador, inteligente, com instinto apurado'
+          },
+          {
+            name: 'Parceiro',
+            role: 'aliado',
+            description: 'Companheiro de investigação',
+            personality: 'Leal, experiente, com métodos diferentes'
+          }
+        ]
+      }
+    },
+    {
+      id: 'esporte',
+      name: 'Esporte',
+      description: 'Histórias de competição e superação',
+      icon: Trophy,
+      color: 'text-yellow-600',
+      bgColor: 'bg-yellow-50 dark:bg-yellow-900/20',
+      features: [
+        'Competições esportivas',
+        'Treinamento e superação',
+        'Rivalidades',
+        'Trabalho em equipe',
+        'Vitórias e derrotas'
+      ],
+      structure: {
+        volumes: [
+          {
+            title: 'Volume 1: O Início',
+            description: 'Primeiros passos no esporte',
+            chapters: [
+              { title: 'Capítulo 1: O Despertar', wordCount: 3000 },
+              { title: 'Capítulo 2: Primeiro Treino', wordCount: 3000 },
+              { title: 'Capítulo 3: A Equipe', wordCount: 3000 },
+              { title: 'Capítulo 4: Primeira Competição', wordCount: 3000 },
+              { title: 'Capítulo 5: A Derrota', wordCount: 3000 }
+            ]
+          }
+        ],
+        worldData: {
+          name: 'Academia Esportiva',
+          genre: 'Esporte',
+          techLevel: 'Moderno',
+          locations: [
+            { name: 'Ginásio', type: 'esporte', description: 'Local de treinos' },
+            { name: 'Quadra', type: 'esporte', description: 'Local de competições' }
+          ]
+        },
+        characters: [
+          {
+            name: 'Atleta',
+            role: 'protagonista',
+            description: 'Jovem com talento natural',
+            personality: 'Determinado, competitivo, com espírito esportivo'
+          },
+          {
+            name: 'Treinador',
+            role: 'mentor',
+            description: 'Guia do protagonista',
+            personality: 'Experiente, rigoroso, com métodos únicos'
+          }
+        ]
+      }
+    },
+    {
+      id: 'comedia',
+      name: 'Comédia',
+      description: 'Histórias engraçadas e situações hilárias',
+      icon: Users,
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-50 dark:bg-orange-900/20',
+      features: [
+        'Situações engraçadas',
+        'Personagens excêntricos',
+        'Gags e piadas',
+        'Comédia romântica',
+        'Momentos hilários'
+      ],
+      structure: {
+        volumes: [
+          {
+            title: 'Volume 1: O Caos Começa',
+            description: 'Início das situações engraçadas',
+            chapters: [
+              { title: 'Capítulo 1: O Encontro', wordCount: 2500 },
+              { title: 'Capítulo 2: Primeira Confusão', wordCount: 2500 },
+              { title: 'Capítulo 3: O Mal-entendido', wordCount: 2500 },
+              { title: 'Capítulo 4: A Trapalhada', wordCount: 2500 },
+              { title: 'Capítulo 5: A Resolução', wordCount: 2500 }
+            ]
+          }
+        ],
+        worldData: {
+          name: 'Escola Comum',
+          genre: 'Comédia',
+          techLevel: 'Moderno',
+          locations: [
+            { name: 'Sala de Aula', type: 'escola', description: 'Local das confusões' },
+            { name: 'Corredor', type: 'escola', description: 'Cenário de gags' }
+          ]
+        },
+        characters: [
+          {
+            name: 'Protagonista',
+            role: 'protagonista',
+            description: 'Pessoa normal em situações engraçadas',
+            personality: 'Desastrado, mas bem-intencionado'
+          },
+          {
+            name: 'Amigo Trapalhão',
+            role: 'amigo',
+            description: 'Fonte de confusões',
+            personality: 'Engraçado, desastrado, leal'
+          }
+        ]
+      }
+    },
+    {
+      id: 'psicologico',
+      name: 'Psicológico',
+      description: 'Histórias com foco em psicologia e mente humana',
+      icon: Brain,
+      color: 'text-gray-600',
+      bgColor: 'bg-gray-50 dark:bg-gray-900/20',
+      features: [
+        'Análise psicológica',
+        'Conflitos internos',
+        'Realidade vs Ilusão',
+        'Traumas e superação',
+        'Mente humana'
+      ],
+      structure: {
+        volumes: [
+          {
+            title: 'Volume 1: A Mente',
+            description: 'Exploração da psicologia humana',
+            chapters: [
+              { title: 'Capítulo 1: O Despertar', wordCount: 4000 },
+              { title: 'Capítulo 2: Memórias', wordCount: 4000 },
+              { title: 'Capítulo 3: O Trauma', wordCount: 4000 },
+              { title: 'Capítulo 4: A Terapia', wordCount: 4000 },
+              { title: 'Capítulo 5: A Cura', wordCount: 4000 }
+            ]
+          }
+        ],
+        worldData: {
+          name: 'Mente Humana',
+          genre: 'Psicológico',
+          techLevel: 'Moderno',
+          locations: [
+            { name: 'Consultório', type: 'terapia', description: 'Local de terapia' },
+            { name: 'Memórias', type: 'psicologico', description: 'Mundo interior' }
+          ]
+        },
+        characters: [
+          {
+            name: 'Paciente',
+            role: 'protagonista',
+            description: 'Pessoa em busca de cura',
+            personality: 'Complexo, traumatizado, em busca de respostas'
+          },
+          {
+            name: 'Terapeuta',
+            role: 'mentor',
+            description: 'Guia psicológico',
+            personality: 'Sábio, paciente, com métodos únicos'
           }
         ]
       }

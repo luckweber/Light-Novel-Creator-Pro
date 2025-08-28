@@ -2,6 +2,29 @@
 
 Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
+## [2.2.0] - 2024-12-19
+
+### 🆕 Novas Funcionalidades
+
+#### Sistema de Versionamento Avançado
+- **Controle de versões completo**: Sistema Git-like para gerenciar mudanças no texto
+- **Versionamento automático**: Cria versões automaticamente a cada 5 minutos de mudanças significativas
+- **Versionamento manual**: Criação de versões sob demanda com mensagens personalizadas
+- **Histórico visual**: Timeline completa de todas as versões com estatísticas
+- **Comparação de versões**: Diff visual e estatísticas detalhadas entre versões
+- **Revertimento seguro**: Restauração de versões anteriores com confirmação
+- **Tipos de versão**: Manual, Auto, Major, Minor, Patch, Merge, Revert
+- **Notificações inteligentes**: Alertas visuais quando versões são criadas
+- **Hook personalizado**: useVersionControl para integração automática
+- **Interface intuitiva**: Painel dedicado com filtros e busca
+
+#### Melhorias no Sistema de Revisão
+- **Integração com versionamento**: Comentários e marcadores vinculados a versões
+- **Histórico de revisões**: Rastreamento de mudanças e feedback
+- **Sistema de tags**: Organização por categorias e prioridades
+- **Resolução de comentários**: Marcação de feedback como resolvido
+- **Estatísticas de revisão**: Métricas de qualidade e progresso
+
 ## [2.1.0] - 2024-12-19
 
 ### 🆕 Novas Funcionalidades

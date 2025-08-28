@@ -18,10 +18,12 @@ import {
   MoreHorizontal,
   Settings,
   Zap,
-  CheckCircle
+  CheckCircle,
+  GitBranch
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import useNotifications from '../hooks/useNotifications';
+import useVersionControl from '../hooks/useVersionControl';
 import toast from 'react-hot-toast';
 import { AIService } from '../utils/aiProviders';
 import { exportToPDF, exportToEPUB, exportToWord, exportStatistics, exportBackup } from '../utils/exportUtils';
@@ -34,6 +36,8 @@ import BackupManager from '../components/backup/BackupManager';
 import ConsistencyChecker from '../components/editor/ConsistencyChecker';
 import NovelReader from '../components/editor/NovelReader';
 import LightNovelPDFExporter from '../components/editor/LightNovelPDFExporter';
+import VersionControlPanel from '../components/editor/VersionControlPanel';
+import VersionNotification from '../components/editor/VersionNotification';
 
 const Editor = () => {
   const { 
@@ -53,6 +57,7 @@ const Editor = () => {
   } = useStore();
 
   const { checkWritingProgress, checkWritingSession } = useNotifications();
+  const { createManualVersion, getVersionStats } = useVersionControl(editorContent);
 
   const [isPreview, setIsPreview] = useState(false);
   const [wordCount, setWordCount] = useState(0);
@@ -69,6 +74,7 @@ const Editor = () => {
   const [showNovelReader, setShowNovelReader] = useState(false);
   const [showToolsDropdown, setShowToolsDropdown] = useState(false);
   const [showPDFExporter, setShowPDFExporter] = useState(false);
+  const [showVersionControl, setShowVersionControl] = useState(false);
   const [sessionStartTime, setSessionStartTime] = useState(Date.now());
   const quillRef = useRef(null);
   const autoSaveTimeoutRef = useRef(null);
@@ -526,30 +532,42 @@ const Editor = () => {
             </div>
           </div>
           
-          <div className="flex items-center space-x-2">
-            {/* Botões Principais */}
-            <button
-              onClick={handleManualSave}
-              className="btn-primary flex items-center"
-            >
-              <Save className="mr-2 h-4 w-4" />
-              Salvar
-            </button>
-            <button
-              onClick={() => setShowAdvancedAI(true)}
-              className="btn-secondary flex items-center bg-purple-600 hover:bg-purple-700 text-white"
-            >
-              <Sparkles className="mr-2 h-4 w-4" />
-              IA Avançada
-            </button>
-            <button
-              onClick={() => setShowAIHelper(!showAIHelper)}
-              className="btn-outline flex items-center"
-            >
-              <Sparkles className="mr-2 h-4 w-4" />
-              AI Helper
-            </button>
-                         <button
+                     <div className="flex items-center space-x-2">
+             {/* Botões Principais */}
+             <button
+               onClick={handleManualSave}
+               className="btn-primary flex items-center"
+             >
+               <Save className="mr-2 h-4 w-4" />
+               Salvar
+             </button>
+             
+             {/* Botão de Versões - Posição Prominente */}
+             <button
+               onClick={() => setShowVersionControl(true)}
+               className="btn-secondary flex items-center bg-blue-600 hover:bg-blue-700 text-white"
+             >
+               <GitBranch className="mr-2 h-4 w-4" />
+               Versões
+             </button>
+             
+             <button
+               onClick={() => setShowAdvancedAI(true)}
+               className="btn-secondary flex items-center bg-purple-600 hover:bg-purple-700 text-white"
+             >
+               <Sparkles className="mr-2 h-4 w-4" />
+               IA Avançada
+             </button>
+             
+             <button
+               onClick={() => setShowAIHelper(!showAIHelper)}
+               className="btn-outline flex items-center"
+             >
+               <Sparkles className="mr-2 h-4 w-4" />
+               AI Helper
+             </button>
+             
+             <button
                onClick={() => setIsPreview(!isPreview)}
                className="btn-outline flex items-center"
              >
@@ -565,15 +583,15 @@ const Editor = () => {
                Exportar PDF
              </button>
 
-            {/* Dropdown de Ferramentas */}
-            <div className="relative">
-              <button
-                onClick={() => setShowToolsDropdown(!showToolsDropdown)}
-                className="btn-outline flex items-center"
-              >
-                <MoreHorizontal className="mr-2 h-4 w-4" />
-                Ferramentas
-              </button>
+             {/* Dropdown de Ferramentas */}
+             <div className="relative">
+               <button
+                 onClick={() => setShowToolsDropdown(!showToolsDropdown)}
+                 className="btn-outline flex items-center"
+               >
+                 <MoreHorizontal className="mr-2 h-4 w-4" />
+                 Ferramentas
+               </button>
               
               {showToolsDropdown && (
                 <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
@@ -628,16 +646,29 @@ const Editor = () => {
                       <Book className="mr-3 h-4 w-4" />
                       Leitor Virtual
                     </button>
-                    <button
-                      onClick={() => {
-                        setShowPDFExporter(true);
-                        setShowToolsDropdown(false);
-                      }}
-                      className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <FileText className="mr-3 h-4 w-4" />
-                      Exportar PDF Profissional
-                    </button>
+                                         <button
+                       onClick={() => {
+                         setShowPDFExporter(true);
+                         setShowToolsDropdown(false);
+                       }}
+                       className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                     >
+                       <FileText className="mr-3 h-4 w-4" />
+                       Exportar PDF Profissional
+                     </button>
+                     
+                     <div className="border-t border-gray-200 my-2"></div>
+                     
+                     <button
+                       onClick={() => {
+                         setShowVersionControl(true);
+                         setShowToolsDropdown(false);
+                       }}
+                       className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                     >
+                       <GitBranch className="mr-3 h-4 w-4" />
+                       Controle de Versões
+                     </button>
                   </div>
                 </div>
               )}
@@ -948,6 +979,35 @@ const Editor = () => {
       {showPDFExporter && (
         <LightNovelPDFExporter onClose={() => setShowPDFExporter(false)} />
       )}
+
+      {/* Modal de Controle de Versões */}
+      {showVersionControl && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-lg shadow-xl w-full max-w-4xl h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <h2 className="text-xl font-semibold text-foreground">Controle de Versões</h2>
+              <button
+                onClick={() => setShowVersionControl(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto h-full">
+              <VersionControlPanel 
+                content={editorContent.replace(/<[^>]*>/g, '')}
+                onContentUpdate={(newContent) => {
+                  setEditorContent(newContent);
+                  addToHistory(newContent);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notificação de Versão */}
+      <VersionNotification content={editorContent} />
     </div>
   );
 };
