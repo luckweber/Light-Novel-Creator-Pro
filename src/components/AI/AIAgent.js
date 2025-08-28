@@ -70,7 +70,7 @@ PROJETO:
 
 Forneça um resumo conciso do contexto atual e sugestões para manter coerência.`;
 
-      const contextResult = await onGenerateWithContext(contextPrompt);
+      const contextResult = await onGenerateWithContext(contextPrompt, context);
       setContextSummary(contextResult);
 
       // Gera insights e dicas
@@ -100,7 +100,7 @@ Formate como JSON:
   "priorityAreas": ["área 1", "área 2"]
 }`;
 
-      const insightsResult = await onGenerateWithContext(insightsPrompt);
+      const insightsResult = await onGenerateWithContext(insightsPrompt, context);
       setInsights(insightsResult);
 
       toast.success('Análise do projeto concluída!');

@@ -5,13 +5,13 @@ import useStore from '../../store/useStore';
 
 const AIInsightsCard = () => {
   const { worldData, volumes, chapters, characters, settings } = useStore();
-  const aiProvider = settings?.aiProvider || 'openai';
+  const aiProvider = settings?.defaultAIProvider || 'openai';
   
   const {
     isAnalyzing,
     getQualityTips,
     getVolumeInsights
-  } = useAIAgent(aiProvider);
+  } = useAIAgent(aiProvider, settings);
 
   const [insights, setInsights] = useState(null);
   const [showFullInsights, setShowFullInsights] = useState(false);

@@ -87,7 +87,7 @@ const WorldBuilder = () => {
   const [editingItem, setEditingItem] = useState(null);
   
   // Agente de IA
-  const aiProvider = settings?.aiProvider || 'openai';
+  const aiProvider = settings?.defaultAIProvider || 'openai';
   const {
     isAgentOpen,
     setIsAgentOpen,
@@ -97,7 +97,7 @@ const WorldBuilder = () => {
     generateElementPrompt,
     getQualityTips,
     getVolumeInsights
-  } = useAIAgent(aiProvider);
+  } = useAIAgent(aiProvider, settings);
   
   // Estados de filtro e busca
   const [searchTerm, setSearchTerm] = useState('');

@@ -63,7 +63,7 @@ const Editor = () => {
   const { createManualVersion, getVersionStats } = useVersionControl(editorContent);
 
   // Agente de IA
-  const aiProvider = settings?.aiProvider || 'openai';
+  const aiProvider = settings?.defaultAIProvider || 'openai';
   const {
     isAgentOpen,
     setIsAgentOpen,
@@ -73,7 +73,7 @@ const Editor = () => {
     generateElementPrompt,
     getQualityTips,
     getVolumeInsights
-  } = useAIAgent(aiProvider);
+  } = useAIAgent(aiProvider, settings);
 
   const [isPreview, setIsPreview] = useState(false);
   const [wordCount, setWordCount] = useState(0);

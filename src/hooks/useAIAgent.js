@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import { AIService, getBestModelForTask } from '../utils/aiProviders';
 
-export const useAIAgent = (aiProvider) => {
+export const useAIAgent = (aiProvider, settings) => {
   const [isAgentOpen, setIsAgentOpen] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
@@ -12,15 +12,24 @@ export const useAIAgent = (aiProvider) => {
       return null;
     }
 
+    if (!settings?.aiProviders?.[aiProvider]) {
+      toast.error('Provedor de IA não configurado');
+      return null;
+    }
+
     try {
-      // Get API key from localStorage
-      const apiKey = localStorage.getItem(`${aiProvider}_api_key`);
-      if (!apiKey) {
+      // Get API key from settings (same pattern as getAIService in WorldBuilder.js)
+      const providerSettings = settings.aiProviders[aiProvider];
+      if (!providerSettings.apiKey) {
         toast.error('API Key não configurada');
         return null;
       }
 
-      const service = new AIService(aiProvider, apiKey);
+      const service = new AIService(aiProvider, providerSettings.apiKey, {
+        model: providerSettings.defaultModel,
+        temperature: providerSettings.temperature,
+        maxTokens: providerSettings.maxTokens
+      });
       const model = getBestModelForTask(aiProvider, 'creative_writing');
       
       // Enhance prompt with context
@@ -53,7 +62,7 @@ export const useAIAgent = (aiProvider) => {
       toast.error(`Erro ao gerar conteúdo: ${error.message}`);
       return null;
     }
-  }, [aiProvider]);
+  }, [aiProvider, settings]);
 
   // Função para analisar projeto e gerar insights
   const analyzeProject = useCallback(async (worldData, projectData) => {
