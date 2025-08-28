@@ -195,10 +195,46 @@ const WorldBuilder = () => {
     }
   }, [aiProvider, getAIService]);
 
+  // Função para limpar e validar resposta da IA
+  const cleanAIResponse = useCallback((response) => {
+    if (!response) return null;
+    
+    let cleaned = response.trim();
+    
+    // Remover marcadores de código
+    if (cleaned.includes('```json')) {
+      cleaned = cleaned.split('```json')[1]?.split('```')[0] || cleaned;
+    } else if (cleaned.includes('```')) {
+      cleaned = cleaned.split('```')[1] || cleaned;
+    }
+    
+    // Remover possíveis prefixos ou sufixos de texto
+    const jsonStart = cleaned.indexOf('{');
+    const jsonEnd = cleaned.lastIndexOf('}');
+    
+    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+      cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+    }
+    
+    // Limpar espaços extras e quebras de linha
+    cleaned = cleaned.replace(/\s+/g, ' ').trim();
+    
+    return cleaned;
+  }, []);
+
   // Função para gerar local com IA
   const generateLocation = useCallback(async (type = 'random') => {
     const prompts = {
-      random: `Crie um local único e interessante para uma light novel. Inclua:
+      random: `Crie um local único e interessante para uma light novel.
+
+REGRAS IMPORTANTES:
+1. Responda APENAS com um JSON válido
+2. NÃO inclua texto explicativo antes ou depois do JSON
+3. NÃO use markdown ou blocos de código
+4. Use aspas duplas para strings
+5. Escape caracteres especiais nas strings
+
+Inclua:
 - Nome criativo e evocativo
 - Tipo de local (cidade, floresta, castelo, etc.)
 - Descrição visual detalhada
@@ -207,7 +243,7 @@ const WorldBuilder = () => {
 - Pontos de interesse importantes
 - Atmosfera e sensações únicas
 
-Formate como JSON:
+Formato exato:
 {
   "name": "Nome do Local",
   "type": "tipo",
@@ -222,11 +258,74 @@ Formate como JSON:
   "secrets": "Segredos ou mistérios do local"
 }`,
 
-      city: `Crie uma cidade fascinante para uma light novel com arquitetura única, distritos interessantes, e uma rica vida urbana.`,
+      city: `Crie uma cidade fascinante para uma light novel com arquitetura única, distritos interessantes, e uma rica vida urbana.
+
+REGRAS IMPORTANTES:
+1. Responda APENAS com um JSON válido
+2. NÃO inclua texto explicativo antes ou depois do JSON
+3. NÃO use markdown ou blocos de código
+4. Use aspas duplas para strings
+
+Formato exato:
+{
+  "name": "Nome da Cidade",
+  "type": "cidade",
+  "description": "Descrição detalhada...",
+  "climate": "Clima predominante",
+  "population": "Informações sobre população",
+  "culture": "Aspectos culturais",
+  "government": "Sistema de governo",
+  "economy": "Base econômica",
+  "pointsOfInterest": ["Ponto 1", "Ponto 2", "Ponto 3"],
+  "atmosphere": "Descrição da atmosfera",
+  "secrets": "Segredos ou mistérios do local"
+}`,
       
-      wilderness: `Crie uma área selvagem misteriosa com paisagens únicas, criaturas interessantes e segredos ocultos.`,
+      wilderness: `Crie uma área selvagem misteriosa com paisagens únicas, criaturas interessantes e segredos ocultos.
+
+REGRAS IMPORTANTES:
+1. Responda APENAS com um JSON válido
+2. NÃO inclua texto explicativo antes ou depois do JSON
+3. NÃO use markdown ou blocos de código
+4. Use aspas duplas para strings
+
+Formato exato:
+{
+  "name": "Nome da Área Selvagem",
+  "type": "selvagem",
+  "description": "Descrição detalhada...",
+  "climate": "Clima predominante",
+  "population": "Informações sobre população",
+  "culture": "Aspectos culturais",
+  "government": "Sistema de governo",
+  "economy": "Base econômica",
+  "pointsOfInterest": ["Ponto 1", "Ponto 2", "Ponto 3"],
+  "atmosphere": "Descrição da atmosfera",
+  "secrets": "Segredos ou mistérios do local"
+}`,
       
-      mystical: `Crie um local mágico com propriedades sobrenaturais, energia mística e fenômenos inexplicáveis.`
+      mystical: `Crie um local mágico com propriedades sobrenaturais, energia mística e fenômenos inexplicáveis.
+
+REGRAS IMPORTANTES:
+1. Responda APENAS com um JSON válido
+2. NÃO inclua texto explicativo antes ou depois do JSON
+3. NÃO use markdown ou blocos de código
+4. Use aspas duplas para strings
+
+Formato exato:
+{
+  "name": "Nome do Local Mágico",
+  "type": "mágico",
+  "description": "Descrição detalhada...",
+  "climate": "Clima predominante",
+  "population": "Informações sobre população",
+  "culture": "Aspectos culturais",
+  "government": "Sistema de governo",
+  "economy": "Base econômica",
+  "pointsOfInterest": ["Ponto 1", "Ponto 2", "Ponto 3"],
+  "atmosphere": "Descrição da atmosfera",
+  "secrets": "Segredos ou mistérios do local"
+}`
     };
 
     const context = {
@@ -239,16 +338,45 @@ Formate como JSON:
     
     if (result) {
       try {
+        // Limpar a resposta da IA
+        const cleanResult = cleanAIResponse(result);
+        
+        if (!cleanResult) {
+          throw new Error('Resposta da IA não pôde ser limpa');
+        }
+        
         // Tentar parsear como JSON
-        const locationData = JSON.parse(result);
+        const locationData = JSON.parse(cleanResult);
+        
+        console.log('Local gerado:', locationData);
+        
         return {
           id: Date.now(),
           createdAt: new Date().toISOString(),
           generatedBy: aiProvider,
           ...locationData
         };
-      } catch (e) {
-        // Se não for JSON válido, usar como texto
+      } catch (parseError) {
+        console.error('Erro ao parsear JSON:', parseError);
+        console.log('Resposta original:', result);
+        
+        // Fallback: tentar extrair informações usando regex
+        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
+        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
+        const typeMatch = result.match(/"type":\s*"([^"]+)"/);
+        
+        if (nameMatch && descriptionMatch) {
+          return {
+            id: Date.now(),
+            name: nameMatch[1],
+            type: typeMatch ? typeMatch[1] : (type === 'random' ? 'city' : type),
+            description: descriptionMatch[1],
+            createdAt: new Date().toISOString(),
+            generatedBy: aiProvider
+          };
+        }
+        
+        // Último fallback: usar a resposta como descrição
         return {
           id: Date.now(),
           name: `Local Gerado ${Date.now()}`,
@@ -261,18 +389,27 @@ Formate como JSON:
     }
     
     return null;
-  }, [generateWithAI, worldData, characters, aiProvider]);
+  }, [generateWithAI, cleanAIResponse, worldData, characters, aiProvider]);
 
   // Função para gerar povo com IA (conectada aos botões)
   const generatePeople = useCallback(async () => {
-    const prompt = `Crie um povo ou raça para uma light novel. Inclua:
+    const prompt = `Crie um povo ou raça para uma light novel.
+
+REGRAS IMPORTANTES:
+1. Responda APENAS com um JSON válido
+2. NÃO inclua texto explicativo antes ou depois do JSON
+3. NÃO use markdown ou blocos de código
+4. Use aspas duplas para strings
+5. Escape caracteres especiais nas strings
+
+Inclua:
 - Nome
 - Classificação (humano, elfo, etc.)
 - Descrição física e cultural
 - Sociedade e estrutura política
 - Tradições e costumes
 
-Formate como JSON:
+Formato exato:
 {
   "name": "Nome",
   "classification": "Classificação",
@@ -291,18 +428,60 @@ Formate como JSON:
 
     if (result) {
       try {
-        const peopleData = JSON.parse(result);
+        // Limpar a resposta da IA
+        const cleanResult = cleanAIResponse(result);
+        
+        if (!cleanResult) {
+          throw new Error('Resposta da IA não pôde ser limpa');
+        }
+        
+        // Tentar parsear como JSON
+        const peopleData = JSON.parse(cleanResult);
+        
+        console.log('Povo gerado:', peopleData);
+        
         addWorldItem('peoples', peopleData);
         toast.success(`Povo "${peopleData.name}" gerado com sucesso!`);
-      } catch (e) {
-        toast.error('A IA retornou um formato inválido.');
+      } catch (parseError) {
+        console.error('Erro ao parsear JSON:', parseError);
+        console.log('Resposta original:', result);
+        
+        // Fallback: tentar extrair informações usando regex
+        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
+        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
+        const classificationMatch = result.match(/"classification":\s*"([^"]+)"/);
+        
+        if (nameMatch && descriptionMatch) {
+          const peopleData = {
+            id: Date.now(),
+            name: nameMatch[1],
+            classification: classificationMatch ? classificationMatch[1] : 'Desconhecido',
+            description: descriptionMatch[1],
+            createdAt: new Date().toISOString(),
+            generatedBy: aiProvider
+          };
+          
+          addWorldItem('peoples', peopleData);
+          toast.success(`Povo "${peopleData.name}" gerado com sucesso!`);
+        } else {
+          toast.error('A IA retornou um formato inválido.');
+        }
       }
     }
-  }, [generateWithAI, worldData, addWorldItem]);
+  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
 
   // Função para gerar evento com IA
   const generateEvent = useCallback(async () => {
-    const prompt = `Crie um evento histórico para uma light novel. Inclua:
+    const prompt = `Crie um evento histórico para uma light novel.
+
+REGRAS IMPORTANTES:
+1. Responda APENAS com um JSON válido
+2. NÃO inclua texto explicativo antes ou depois do JSON
+3. NÃO use markdown ou blocos de código
+4. Use aspas duplas para strings
+5. Escape caracteres especiais nas strings
+
+Inclua:
 - Nome do evento
 - Ano aproximado
 - Tipo (político, guerra, descoberta, etc.)
@@ -310,7 +489,7 @@ Formate como JSON:
 - Impacto no mundo
 - Principais participantes
 
-Formate como JSON:
+Formato exato:
 {
   "name": "Nome do Evento",
   "year": "Ano",
@@ -329,25 +508,60 @@ Formate como JSON:
 
     if (result) {
       try {
-        const eventData = JSON.parse(result);
+        const cleanResult = cleanAIResponse(result);
+        if (!cleanResult) {
+          throw new Error('Resposta da IA não pôde ser limpa');
+        }
+        const eventData = JSON.parse(cleanResult);
+        console.log('Evento gerado:', eventData);
         addWorldItem('events', eventData);
         toast.success(`Evento "${eventData.name}" gerado com sucesso!`);
-      } catch (e) {
-        toast.error('A IA retornou um formato inválido.');
+      } catch (parseError) {
+        console.error('Erro ao parsear JSON:', parseError);
+        console.log('Resposta original:', result);
+        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
+        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
+        const typeMatch = result.match(/"type":\s*"([^"]+)"/);
+        if (nameMatch && descriptionMatch) {
+          const eventData = {
+            id: Date.now(),
+            name: nameMatch[1],
+            year: 'Ano histórico',
+            type: typeMatch ? typeMatch[1] : 'Evento Histórico',
+            description: descriptionMatch[1],
+            impact: 'Impacto significativo no mundo',
+            participants: 'Participantes importantes',
+            createdAt: new Date().toISOString(),
+            generatedBy: aiProvider
+          };
+          addWorldItem('events', eventData);
+          toast.success(`Evento "${eventData.name}" gerado com sucesso!`);
+        } else {
+          toast.error('A IA retornou um formato inválido.');
+        }
       }
     }
-  }, [generateWithAI, worldData, addWorldItem]);
+  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
 
   // Função para gerar sistema de magia com IA
   const generateMagicSystem = useCallback(async () => {
-    const prompt = `Crie um sistema de magia único para uma light novel. Inclua:
+    const prompt = `Crie um sistema de magia único para uma light novel.
+
+REGRAS IMPORTANTES:
+1. Responda APENAS com um JSON válido
+2. NÃO inclua texto explicativo antes ou depois do JSON
+3. NÃO use markdown ou blocos de código
+4. Use aspas duplas para strings
+5. Escape caracteres especiais nas strings
+
+Inclua:
 - Nome do sistema
 - Descrição detalhada
 - Regras e funcionamento
 - Fonte de poder
 - Limitações e custos
 
-Formate como JSON:
+Formato exato:
 {
   "name": "Nome do Sistema",
   "description": "Descrição detalhada",
@@ -365,18 +579,52 @@ Formate como JSON:
 
     if (result) {
       try {
-        const systemData = JSON.parse(result);
+        const cleanResult = cleanAIResponse(result);
+        if (!cleanResult) {
+          throw new Error('Resposta da IA não pôde ser limpa');
+        }
+        const systemData = JSON.parse(cleanResult);
+        console.log('Sistema de magia gerado:', systemData);
         addWorldItem('magicSystems', systemData);
         toast.success(`Sistema "${systemData.name}" gerado com sucesso!`);
-      } catch (e) {
-        toast.error('A IA retornou um formato inválido.');
+      } catch (parseError) {
+        console.error('Erro ao parsear JSON:', parseError);
+        console.log('Resposta original:', result);
+        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
+        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
+        const rulesMatch = result.match(/"rules":\s*"([^"]+)"/);
+        if (nameMatch && descriptionMatch) {
+          const systemData = {
+            id: Date.now(),
+            name: nameMatch[1],
+            description: descriptionMatch[1],
+            rules: rulesMatch ? rulesMatch[1] : 'Regras complexas de magia',
+            source: 'Fonte mágica natural',
+            limitations: 'Limitações e custos significativos',
+            createdAt: new Date().toISOString(),
+            generatedBy: aiProvider
+          };
+          addWorldItem('magicSystems', systemData);
+          toast.success(`Sistema "${systemData.name}" gerado com sucesso!`);
+        } else {
+          toast.error('A IA retornou um formato inválido.');
+        }
       }
     }
-  }, [generateWithAI, worldData, addWorldItem]);
+  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
 
   // Função para gerar idioma com IA
   const generateLanguage = useCallback(async () => {
-    const prompt = `Crie um idioma único para uma light novel. Inclua:
+    const prompt = `Crie um idioma único para uma light novel.
+
+REGRAS IMPORTANTES:
+1. Responda APENAS com um JSON válido
+2. NÃO inclua texto explicativo antes ou depois do JSON
+3. NÃO use markdown ou blocos de código
+4. Use aspas duplas para strings
+5. Escape caracteres especiais nas strings
+
+Inclua:
 - Nome do idioma
 - Família linguística
 - Descrição das características
@@ -384,7 +632,7 @@ Formate como JSON:
 - Sistema de escrita
 - Exemplos de palavras ou frases
 
-Formate como JSON:
+Formato exato:
 {
   "name": "Nome do Idioma",
   "family": "Família Linguística",
@@ -404,18 +652,53 @@ Formate como JSON:
 
     if (result) {
       try {
-        const languageData = JSON.parse(result);
+        const cleanResult = cleanAIResponse(result);
+        if (!cleanResult) {
+          throw new Error('Resposta da IA não pôde ser limpa');
+        }
+        const languageData = JSON.parse(cleanResult);
+        console.log('Idioma gerado:', languageData);
         addWorldItem('languages', languageData);
         toast.success(`Idioma "${languageData.name}" gerado com sucesso!`);
-      } catch (e) {
-        toast.error('A IA retornou um formato inválido.');
+      } catch (parseError) {
+        console.error('Erro ao parsear JSON:', parseError);
+        console.log('Resposta original:', result);
+        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
+        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
+        const familyMatch = result.match(/"family":\s*"([^"]+)"/);
+        if (nameMatch && descriptionMatch) {
+          const languageData = {
+            id: Date.now(),
+            name: nameMatch[1],
+            family: familyMatch ? familyMatch[1] : 'Linguística Única',
+            description: descriptionMatch[1],
+            speakers: 'Povos locais',
+            script: 'Sistema de escrita próprio',
+            examples: 'Palavras e frases únicas',
+            createdAt: new Date().toISOString(),
+            generatedBy: aiProvider
+          };
+          addWorldItem('languages', languageData);
+          toast.success(`Idioma "${languageData.name}" gerado com sucesso!`);
+        } else {
+          toast.error('A IA retornou um formato inválido.');
+        }
       }
     }
-  }, [generateWithAI, worldData, addWorldItem]);
+  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
 
   // Função para gerar religião com IA
   const generateReligion = useCallback(async () => {
-    const prompt = `Crie uma religião única para uma light novel. Inclua:
+    const prompt = `Crie uma religião única para uma light novel.
+
+REGRAS IMPORTANTES:
+1. Responda APENAS com um JSON válido
+2. NÃO inclua texto explicativo antes ou depois do JSON
+3. NÃO use markdown ou blocos de código
+4. Use aspas duplas para strings
+5. Escape caracteres especiais nas strings
+
+Inclua:
 - Nome da religião
 - Principais divindades ou conceitos
 - Descrição das crenças centrais
@@ -423,7 +706,7 @@ Formate como JSON:
 - Seguidores principais
 - Símbolos sagrados
 
-Formate como JSON:
+Formato exato:
 {
   "name": "Nome da Religião",
   "deities": "Divindades principais",
@@ -443,18 +726,53 @@ Formate como JSON:
 
     if (result) {
       try {
-        const religionData = JSON.parse(result);
+        const cleanResult = cleanAIResponse(result);
+        if (!cleanResult) {
+          throw new Error('Resposta da IA não pôde ser limpa');
+        }
+        const religionData = JSON.parse(cleanResult);
+        console.log('Religião gerada:', religionData);
         addWorldItem('religions', religionData);
         toast.success(`Religião "${religionData.name}" gerada com sucesso!`);
-      } catch (e) {
-        toast.error('A IA retornou um formato inválido.');
+      } catch (parseError) {
+        console.error('Erro ao parsear JSON:', parseError);
+        console.log('Resposta original:', result);
+        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
+        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
+        const deitiesMatch = result.match(/"deities":\s*"([^"]+)"/);
+        if (nameMatch && descriptionMatch) {
+          const religionData = {
+            id: Date.now(),
+            name: nameMatch[1],
+            deities: deitiesMatch ? deitiesMatch[1] : 'Divindades locais',
+            description: descriptionMatch[1],
+            practices: 'Rituais e cerimônias tradicionais',
+            followers: 'Fiéis devotos',
+            symbols: 'Símbolos sagrados únicos',
+            createdAt: new Date().toISOString(),
+            generatedBy: aiProvider
+          };
+          addWorldItem('religions', religionData);
+          toast.success(`Religião "${religionData.name}" gerada com sucesso!`);
+        } else {
+          toast.error('A IA retornou um formato inválido.');
+        }
       }
     }
-  }, [generateWithAI, worldData, addWorldItem]);
+  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
 
   // Função para gerar tradição com IA
   const generateTradition = useCallback(async () => {
-    const prompt = `Crie uma tradição cultural única para uma light novel. Inclua:
+    const prompt = `Crie uma tradição cultural única para uma light novel.
+
+REGRAS IMPORTANTES:
+1. Responda APENAS com um JSON válido
+2. NÃO inclua texto explicativo antes ou depois do JSON
+3. NÃO use markdown ou blocos de código
+4. Use aspas duplas para strings
+5. Escape caracteres especiais nas strings
+
+Inclua:
 - Nome da tradição
 - Tipo (festival, ritual, costume, etc.)
 - Descrição detalhada
@@ -462,7 +780,7 @@ Formate como JSON:
 - Como é praticada
 - Frequência (anual, sazonal, etc.)
 
-Formate como JSON:
+Formato exato:
 {
   "name": "Nome da Tradição",
   "type": "Tipo da tradição",
@@ -483,18 +801,53 @@ Formate como JSON:
 
     if (result) {
       try {
-        const traditionData = JSON.parse(result);
+        const cleanResult = cleanAIResponse(result);
+        if (!cleanResult) {
+          throw new Error('Resposta da IA não pôde ser limpa');
+        }
+        const traditionData = JSON.parse(cleanResult);
+        console.log('Tradição gerada:', traditionData);
         addWorldItem('traditions', traditionData);
         toast.success(`Tradição "${traditionData.name}" gerada com sucesso!`);
-      } catch (e) {
-        toast.error('A IA retornou um formato inválido.');
+      } catch (parseError) {
+        console.error('Erro ao parsear JSON:', parseError);
+        console.log('Resposta original:', result);
+        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
+        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
+        const typeMatch = result.match(/"type":\s*"([^"]+)"/);
+        if (nameMatch && descriptionMatch) {
+          const traditionData = {
+            id: Date.now(),
+            name: nameMatch[1],
+            type: typeMatch ? typeMatch[1] : 'Tradição Cultural',
+            description: descriptionMatch[1],
+            origin: 'Origem ancestral',
+            practice: 'Praticada pela comunidade',
+            frequency: 'Anual',
+            createdAt: new Date().toISOString(),
+            generatedBy: aiProvider
+          };
+          addWorldItem('traditions', traditionData);
+          toast.success(`Tradição "${traditionData.name}" gerada com sucesso!`);
+        } else {
+          toast.error('A IA retornou um formato inválido.');
+        }
       }
     }
-  }, [generateWithAI, worldData, addWorldItem]);
+  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
 
   // Função para gerar região com IA
   const generateRegion = useCallback(async () => {
-    const prompt = `Crie uma região geográfica única para uma light novel. Inclua:
+    const prompt = `Crie uma região geográfica única para uma light novel.
+
+REGRAS IMPORTANTES:
+1. Responda APENAS com um JSON válido
+2. NÃO inclua texto explicativo antes ou depois do JSON
+3. NÃO use markdown ou blocos de código
+4. Use aspas duplas para strings
+5. Escape caracteres especiais nas strings
+
+Inclua:
 - Nome da região
 - Descrição geográfica detalhada
 - Tipo de clima predominante
@@ -502,7 +855,7 @@ Formate como JSON:
 - População estimada
 - Características especiais
 
-Formate como JSON:
+Formato exato:
 {
   "name": "Nome da Região",
   "description": "Descrição geográfica",
@@ -522,18 +875,54 @@ Formate como JSON:
 
     if (result) {
       try {
-        const regionData = JSON.parse(result);
+        const cleanResult = cleanAIResponse(result);
+        if (!cleanResult) {
+          throw new Error('Resposta da IA não pôde ser limpa');
+        }
+        const regionData = JSON.parse(cleanResult);
+        console.log('Região gerada:', regionData);
         addWorldItem('regions', regionData);
         toast.success(`Região "${regionData.name}" gerada com sucesso!`);
-      } catch (e) {
-        toast.error('A IA retornou um formato inválido.');
+      } catch (parseError) {
+        console.error('Erro ao parsear JSON:', parseError);
+        console.log('Resposta original:', result);
+        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
+        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
+        const climateMatch = result.match(/"climate":\s*"([^"]+)"/);
+        const terrainMatch = result.match(/"terrain":\s*"([^"]+)"/);
+        if (nameMatch && descriptionMatch) {
+          const regionData = {
+            id: Date.now(),
+            name: nameMatch[1],
+            description: descriptionMatch[1],
+            climate: climateMatch ? climateMatch[1] : 'Temperado',
+            terrain: terrainMatch ? terrainMatch[1] : 'Variado',
+            population: 'Desconhecida',
+            features: 'Características únicas da região',
+            createdAt: new Date().toISOString(),
+            generatedBy: aiProvider
+          };
+          addWorldItem('regions', regionData);
+          toast.success(`Região "${regionData.name}" gerada com sucesso!`);
+        } else {
+          toast.error('A IA retornou um formato inválido.');
+        }
       }
     }
-  }, [generateWithAI, worldData, addWorldItem]);
+  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
 
   // Função para gerar marco com IA
   const generateLandmark = useCallback(async () => {
-    const prompt = `Crie um marco/ponto de referência único para uma light novel. Inclua:
+    const prompt = `Crie um marco/ponto de referência único para uma light novel.
+
+REGRAS IMPORTANTES:
+1. Responda APENAS com um JSON válido
+2. NÃO inclua texto explicativo antes ou depois do JSON
+3. NÃO use markdown ou blocos de código
+4. Use aspas duplas para strings
+5. Escape caracteres especiais nas strings
+
+Inclua:
 - Nome do marco
 - Tipo (montanha, ruínas, monumento, etc.)
 - Descrição detalhada
@@ -541,7 +930,7 @@ Formate como JSON:
 - Localização aproximada
 - Características especiais
 
-Formate como JSON:
+Formato exato:
 {
   "name": "Nome do Marco",
   "type": "Tipo do marco",
@@ -561,18 +950,53 @@ Formate como JSON:
 
     if (result) {
       try {
-        const landmarkData = JSON.parse(result);
+        const cleanResult = cleanAIResponse(result);
+        if (!cleanResult) {
+          throw new Error('Resposta da IA não pôde ser limpa');
+        }
+        const landmarkData = JSON.parse(cleanResult);
+        console.log('Marco gerado:', landmarkData);
         addWorldItem('landmarks', landmarkData);
         toast.success(`Marco "${landmarkData.name}" gerado com sucesso!`);
-      } catch (e) {
-        toast.error('A IA retornou um formato inválido.');
+      } catch (parseError) {
+        console.error('Erro ao parsear JSON:', parseError);
+        console.log('Resposta original:', result);
+        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
+        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
+        const typeMatch = result.match(/"type":\s*"([^"]+)"/);
+        if (nameMatch && descriptionMatch) {
+          const landmarkData = {
+            id: Date.now(),
+            name: nameMatch[1],
+            type: typeMatch ? typeMatch[1] : 'Monumento',
+            description: descriptionMatch[1],
+            significance: 'Importante para a história local',
+            location: 'Localização estratégica',
+            features: 'Características únicas',
+            createdAt: new Date().toISOString(),
+            generatedBy: aiProvider
+          };
+          addWorldItem('landmarks', landmarkData);
+          toast.success(`Marco "${landmarkData.name}" gerado com sucesso!`);
+        } else {
+          toast.error('A IA retornou um formato inválido.');
+        }
       }
     }
-  }, [generateWithAI, worldData, addWorldItem]);
+  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
 
   // Função para gerar recurso com IA
   const generateResource = useCallback(async () => {
-    const prompt = `Crie um recurso natural/material único para uma light novel. Inclua:
+    const prompt = `Crie um recurso natural/material único para uma light novel.
+
+REGRAS IMPORTANTES:
+1. Responda APENAS com um JSON válido
+2. NÃO inclua texto explicativo antes ou depois do JSON
+3. NÃO use markdown ou blocos de código
+4. Use aspas duplas para strings
+5. Escape caracteres especiais nas strings
+
+Inclua:
 - Nome do recurso
 - Tipo (mineral, vegetal, animal, mágico, etc.)
 - Descrição das características
@@ -580,7 +1004,7 @@ Formate como JSON:
 - Principais usos e aplicações
 - Onde pode ser encontrado
 
-Formate como JSON:
+Formato exato:
 {
   "name": "Nome do Recurso",
   "type": "Tipo do recurso",
@@ -600,25 +1024,60 @@ Formate como JSON:
 
     if (result) {
       try {
-        const resourceData = JSON.parse(result);
+        const cleanResult = cleanAIResponse(result);
+        if (!cleanResult) {
+          throw new Error('Resposta da IA não pôde ser limpa');
+        }
+        const resourceData = JSON.parse(cleanResult);
+        console.log('Recurso gerado:', resourceData);
         addWorldItem('resources', resourceData);
         toast.success(`Recurso "${resourceData.name}" gerado com sucesso!`);
-      } catch (e) {
-        toast.error('A IA retornou um formato inválido.');
+      } catch (parseError) {
+        console.error('Erro ao parsear JSON:', parseError);
+        console.log('Resposta original:', result);
+        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
+        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
+        const typeMatch = result.match(/"type":\s*"([^"]+)"/);
+        if (nameMatch && descriptionMatch) {
+          const resourceData = {
+            id: Date.now(),
+            name: nameMatch[1],
+            type: typeMatch ? typeMatch[1] : 'Mineral',
+            description: descriptionMatch[1],
+            rarity: 'Comum',
+            uses: 'Múltiplos usos',
+            location: 'Distribuído pelo mundo',
+            createdAt: new Date().toISOString(),
+            generatedBy: aiProvider
+          };
+          addWorldItem('resources', resourceData);
+          toast.success(`Recurso "${resourceData.name}" gerado com sucesso!`);
+        } else {
+          toast.error('A IA retornou um formato inválido.');
+        }
       }
     }
-  }, [generateWithAI, worldData, addWorldItem]);
+  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
 
   // Função para gerar tecnologia com IA
   const generateTechnology = useCallback(async () => {
-    const prompt = `Crie uma tecnologia única para uma light novel. Inclua:
+    const prompt = `Crie uma tecnologia única para uma light novel.
+
+REGRAS IMPORTANTES:
+1. Responda APENAS com um JSON válido
+2. NÃO inclua texto explicativo antes ou depois do JSON
+3. NÃO use markdown ou blocos de código
+4. Use aspas duplas para strings
+5. Escape caracteres especiais nas strings
+
+Inclua:
 - Nome da tecnologia
 - Nível tecnológico (ex: Medieval, Renascentista, Industrial, Futurista)
 - Descrição detalhada de como funciona
 - Principais aplicações e usos
 - Impacto na sociedade
 
-Formate como JSON:
+Formato exato:
 {
   "name": "Nome da Tecnologia",
   "level": "Nível Tecnológico",
@@ -636,25 +1095,59 @@ Formate como JSON:
 
     if (result) {
       try {
-        const techData = JSON.parse(result);
+        const cleanResult = cleanAIResponse(result);
+        if (!cleanResult) {
+          throw new Error('Resposta da IA não pôde ser limpa');
+        }
+        const techData = JSON.parse(cleanResult);
+        console.log('Tecnologia gerada:', techData);
         addWorldItem('technologies', techData);
         toast.success(`Tecnologia "${techData.name}" gerada com sucesso!`);
-      } catch (e) {
-        toast.error('A IA retornou um formato inválido.');
+      } catch (parseError) {
+        console.error('Erro ao parsear JSON:', parseError);
+        console.log('Resposta original:', result);
+        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
+        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
+        const levelMatch = result.match(/"level":\s*"([^"]+)"/);
+        if (nameMatch && descriptionMatch) {
+          const techData = {
+            id: Date.now(),
+            name: nameMatch[1],
+            level: levelMatch ? levelMatch[1] : 'Avançado',
+            description: descriptionMatch[1],
+            applications: 'Múltiplas aplicações',
+            impact: 'Impacto significativo na sociedade',
+            createdAt: new Date().toISOString(),
+            generatedBy: aiProvider
+          };
+          addWorldItem('technologies', techData);
+          toast.success(`Tecnologia "${techData.name}" gerada com sucesso!`);
+        } else {
+          toast.error('A IA retornou um formato inválido.');
+        }
       }
     }
-  }, [generateWithAI, worldData, addWorldItem]);
+  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
 
   // Função para gerar governo com IA
   const generateGovernment = useCallback(async () => {
-    const prompt = `Crie um sistema político/governo único para uma light novel. Inclua:
+    const prompt = `Crie um sistema político/governo único para uma light novel.
+
+REGRAS IMPORTANTES:
+1. Responda APENAS com um JSON válido
+2. NÃO inclua texto explicativo antes ou depois do JSON
+3. NÃO use markdown ou blocos de código
+4. Use aspas duplas para strings
+5. Escape caracteres especiais nas strings
+
+Inclua:
 - Nome do governo (ex: Império de Eldoria)
 - Tipo de governo (ex: Monarquia, República, Teocracia)
 - Descrição da estrutura de poder
 - Título do líder (ex: Imperador, Presidente, Sumo Sacerdote)
 - Leis e ideologias principais
 
-Formate como JSON:
+Formato exato:
 {
   "name": "Nome do Governo",
   "type": "Tipo de Governo",
@@ -674,25 +1167,59 @@ Formate como JSON:
 
     if (result) {
       try {
-        const govData = JSON.parse(result);
+        const cleanResult = cleanAIResponse(result);
+        if (!cleanResult) {
+          throw new Error('Resposta da IA não pôde ser limpa');
+        }
+        const govData = JSON.parse(cleanResult);
+        console.log('Governo gerado:', govData);
         addWorldItem('governments', govData);
         toast.success(`Sistema político "${govData.name}" gerado com sucesso!`);
-      } catch (e) {
-        toast.error('A IA retornou um formato inválido.');
+      } catch (parseError) {
+        console.error('Erro ao parsear JSON:', parseError);
+        console.log('Resposta original:', result);
+        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
+        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
+        const typeMatch = result.match(/"type":\s*"([^"]+)"/);
+        if (nameMatch && descriptionMatch) {
+          const govData = {
+            id: Date.now(),
+            name: nameMatch[1],
+            type: typeMatch ? typeMatch[1] : 'Monarquia',
+            description: descriptionMatch[1],
+            leaderTitle: 'Líder Supremo',
+            laws: 'Leis e regulamentos estabelecidos',
+            createdAt: new Date().toISOString(),
+            generatedBy: aiProvider
+          };
+          addWorldItem('governments', govData);
+          toast.success(`Sistema político "${govData.name}" gerado com sucesso!`);
+        } else {
+          toast.error('A IA retornou um formato inválido.');
+        }
       }
     }
-  }, [generateWithAI, worldData, addWorldItem]);
+  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
 
   // Função para gerar economia com IA
   const generateEconomy = useCallback(async () => {
-    const prompt = `Crie um sistema econômico único para uma light novel. Inclua:
+    const prompt = `Crie um sistema econômico único para uma light novel.
+
+REGRAS IMPORTANTES:
+1. Responda APENAS com um JSON válido
+2. NÃO inclua texto explicativo antes ou depois do JSON
+3. NÃO use markdown ou blocos de código
+4. Use aspas duplas para strings
+5. Escape caracteres especiais nas strings
+
+Inclua:
 - Nome do sistema (ex: Mercantilismo de Prata)
 - Descrição do funcionamento
 - Moeda principal
 - Principais exportações e importações
 - Nível de riqueza e distribuição
 
-Formate como JSON:
+Formato exato:
 {
   "name": "Nome do Sistema",
   "description": "Funcionamento da economia",
@@ -712,14 +1239,39 @@ Formate como JSON:
 
     if (result) {
       try {
-        const ecoData = JSON.parse(result);
+        const cleanResult = cleanAIResponse(result);
+        if (!cleanResult) {
+          throw new Error('Resposta da IA não pôde ser limpa');
+        }
+        const ecoData = JSON.parse(cleanResult);
+        console.log('Economia gerada:', ecoData);
         addWorldItem('economies', ecoData);
         toast.success(`Sistema econômico "${ecoData.name}" gerado com sucesso!`);
-      } catch (e) {
-        toast.error('A IA retornou um formato inválido.');
+      } catch (parseError) {
+        console.error('Erro ao parsear JSON:', parseError);
+        console.log('Resposta original:', result);
+        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
+        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
+        const currencyMatch = result.match(/"currency":\s*"([^"]+)"/);
+        if (nameMatch && descriptionMatch) {
+          const ecoData = {
+            id: Date.now(),
+            name: nameMatch[1],
+            description: descriptionMatch[1],
+            currency: currencyMatch ? currencyMatch[1] : 'Moeda Local',
+            mainExports: 'Produtos locais',
+            wealthDistribution: 'Distribuição equilibrada',
+            createdAt: new Date().toISOString(),
+            generatedBy: aiProvider
+          };
+          addWorldItem('economies', ecoData);
+          toast.success(`Sistema econômico "${ecoData.name}" gerado com sucesso!`);
+        } else {
+          toast.error('A IA retornou um formato inválido.');
+        }
       }
     }
-  }, [generateWithAI, worldData, addWorldItem]);
+  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
 
   // Função para geração em lote
   const generateBatch = useCallback(async (type, count = 5) => {
@@ -740,6 +1292,126 @@ Formate como JSON:
     toast.success(`${results.length} locais gerados com sucesso!`, { id: 'batch-generation' });
     return results;
   }, [generateLocation, addLocation]);
+
+  // Função para gerar informações básicas com IA
+  const handleGenerateBasicInfo = useCallback(async () => {
+    const prompt = `Crie informações básicas completas para um mundo de light novel. Inclua:
+
+- Nome do mundo (criativo e memorável)
+- Descrição geral detalhada (atmosfera, características principais, história geral)
+- Gênero apropriado (fantasy, sci-fi, urban-fantasy, historical, modern, post-apocalyptic, steampunk, cyberpunk)
+- Nível tecnológico (stone-age, bronze-age, iron-age, medieval, renaissance, industrial, modern, futuristic)
+
+Considere criar um mundo único com:
+- Elementos distintivos que o tornem memorável
+- Atmosfera envolvente para uma light novel
+- Possibilidades de narrativas interessantes
+- Aspectos culturais e sociais ricos
+
+REGRAS IMPORTANTES:
+1. Responda APENAS com um JSON válido
+2. NÃO inclua texto explicativo antes ou depois do JSON
+3. NÃO use markdown ou blocos de código
+4. Use aspas duplas para strings
+5. Escape caracteres especiais nas strings
+
+Formato exato:
+{
+  "name": "Nome do Mundo",
+  "description": "Descrição detalhada do mundo...",
+  "genre": "fantasy",
+  "techLevel": "medieval"
+}`;
+
+    const context = {
+      worldName: worldData?.name || 'Novo Mundo',
+      existingElements: [],
+      characters: characters?.slice(0, 3) || []
+    };
+
+    const result = await generateWithAI('basicInfo', prompt, context);
+    
+    if (result) {
+      try {
+        // Limpar o resultado usando a função utilitária
+        const cleanResult = cleanAIResponse(result);
+        
+        if (!cleanResult) {
+          throw new Error('Resposta da IA está vazia ou inválida');
+        }
+        
+        // Tentar fazer parse do JSON
+        const parsedResult = JSON.parse(cleanResult);
+        
+        console.log('AI Response parsed:', parsedResult); // Debug log
+        
+        // Atualizar as informações básicas
+        updateWorldData({
+          name: parsedResult.name || worldData?.name || '',
+          description: parsedResult.description || worldData?.description || '',
+          genre: parsedResult.genre || worldData?.genre || '',
+          techLevel: parsedResult.techLevel || worldData?.techLevel || ''
+        });
+        
+        toast.success('Informações básicas geradas com sucesso!');
+      } catch (parseError) {
+        console.error('Erro ao fazer parse do JSON:', parseError);
+        console.log('Resultado bruto da IA:', result);
+        
+        // Tentar extrair informações usando regex como fallback
+        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
+        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
+        const genreMatch = result.match(/"genre":\s*"([^"]+)"/);
+        const techLevelMatch = result.match(/"techLevel":\s*"([^"]+)"/);
+        
+        if (nameMatch || descriptionMatch || genreMatch || techLevelMatch) {
+          updateWorldData({
+            name: nameMatch?.[1] || worldData?.name || '',
+            description: descriptionMatch?.[1] || worldData?.description || '',
+            genre: genreMatch?.[1] || worldData?.genre || '',
+            techLevel: techLevelMatch?.[1] || worldData?.techLevel || ''
+          });
+          toast.success('Informações básicas extraídas com sucesso!');
+        } else {
+          // Tentar uma abordagem mais flexível - procurar por padrões no texto
+          const lines = result.split('\n');
+          let extractedName = '';
+          let extractedDescription = '';
+          let extractedGenre = '';
+          let extractedTechLevel = '';
+          
+          for (const line of lines) {
+            const trimmedLine = line.trim();
+            if (trimmedLine.toLowerCase().includes('nome') && !extractedName) {
+              extractedName = trimmedLine.replace(/^.*?[:：]\s*/, '').trim();
+            } else if (trimmedLine.toLowerCase().includes('descrição') || trimmedLine.toLowerCase().includes('description')) {
+              extractedDescription = trimmedLine.replace(/^.*?[:：]\s*/, '').trim();
+            } else if (trimmedLine.toLowerCase().includes('gênero') || trimmedLine.toLowerCase().includes('genre')) {
+              extractedGenre = trimmedLine.replace(/^.*?[:：]\s*/, '').trim();
+            } else if (trimmedLine.toLowerCase().includes('tecnológico') || trimmedLine.toLowerCase().includes('tech')) {
+              extractedTechLevel = trimmedLine.replace(/^.*?[:：]\s*/, '').trim();
+            }
+          }
+          
+          if (extractedName || extractedDescription || extractedGenre || extractedTechLevel) {
+            updateWorldData({
+              name: extractedName || worldData?.name || '',
+              description: extractedDescription || worldData?.description || '',
+              genre: extractedGenre || worldData?.genre || '',
+              techLevel: extractedTechLevel || worldData?.techLevel || ''
+            });
+            toast.success('Informações básicas extraídas com sucesso!');
+          } else {
+            // Se não conseguir extrair nada, usar o texto como descrição
+            updateWorldData({
+              description: result
+            });
+            toast.success('Descrição do mundo gerada com sucesso!');
+          }
+        }
+      }
+    }
+  }, [generateWithAI, cleanAIResponse, worldData, characters, updateWorldData]);
 
   // Função para obter dados da aba atual
   const getCurrentTabData = useCallback(() => {
@@ -918,32 +1590,56 @@ Formate como JSON:
         {/* Informações básicas */}
         <div className="card">
           <div className="flex items-center justify-between mb-6">
-                          <h3 className="text-lg font-semibold text-foreground">Informações Básicas</h3>
-            <button className="btn-ghost">
-              <Edit className="h-4 w-4" />
-            </button>
+            <div className="flex items-center">
+              <Globe className="h-5 w-5 text-blue-600 mr-2" />
+              <h3 className="text-lg font-semibold text-foreground">Informações Básicas</h3>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleGenerateBasicInfo}
+                disabled={isGenerating}
+                className="btn-secondary flex items-center text-sm bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                <Sparkles className="h-4 w-4 mr-1" />
+                {isGenerating ? 'Gerando...' : 'IA'}
+              </button>
+              <button className="btn-ghost">
+                <Edit className="h-4 w-4" />
+              </button>
+            </div>
           </div>
           
           <div className="space-y-4">
+            {isGenerating && (
+              <div className="mb-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                <div className="flex items-center text-purple-700">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-700 mr-2"></div>
+                  <span className="text-sm">Gerando informações básicas com IA...</span>
+                </div>
+              </div>
+            )}
+            
             <div>
-                              <label className="block text-sm font-medium text-foreground mb-2">Nome do Mundo</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Nome do Mundo</label>
               <input
                 type="text"
                 value={worldData?.name || ''}
                 onChange={(e) => updateWorldData({ name: e.target.value })}
                 className="input-field"
                 placeholder="Digite o nome do seu mundo..."
+                disabled={isGenerating}
               />
             </div>
             
             <div>
-                              <label className="block text-sm font-medium text-foreground mb-2">Descrição Geral</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Descrição Geral</label>
               <textarea
                 value={worldData?.description || ''}
                 onChange={(e) => updateWorldData({ description: e.target.value })}
                 className="textarea-field"
                 rows="4"
                 placeholder="Descreva seu mundo, sua atmosfera, características principais..."
+                disabled={isGenerating}
               />
             </div>
             
@@ -954,6 +1650,7 @@ Formate como JSON:
                   value={worldData?.genre || ''}
                   onChange={(e) => updateWorldData({ genre: e.target.value })}
                   className="input-field"
+                  disabled={isGenerating}
                 >
                   <option value="">Selecione...</option>
                   <option value="fantasy">Fantasia</option>
@@ -973,6 +1670,7 @@ Formate como JSON:
                   value={worldData?.techLevel || ''}
                   onChange={(e) => updateWorldData({ techLevel: e.target.value })}
                   className="input-field"
+                  disabled={isGenerating}
                 >
                   <option value="">Selecione...</option>
                   <option value="stone-age">Idade da Pedra</option>
@@ -1247,7 +1945,20 @@ Formate como JSON:
             </button>
             {aiProvider && (
               <button 
-                onClick={() => generateLocation('random')}
+                onClick={async () => {
+                  setIsGenerating(true);
+                  try {
+                    const result = await generateLocation('random');
+                    if (result) {
+                      addLocation(result);
+                      toast.success(`Local "${result.name}" gerado com sucesso!`);
+                    }
+                  } catch (error) {
+                    toast.error(`Erro ao gerar local: ${error.message}`);
+                  } finally {
+                    setIsGenerating(false);
+                  }
+                }}
                 className="btn-outline"
                 disabled={isGenerating}
               >
@@ -1888,6 +2599,7 @@ Formate como JSON:
             </button>
             {aiProvider && (
               <button 
+                onClick={generatePeople}
                 className="btn-outline"
                 disabled={isGenerating}
               >
@@ -3201,7 +3913,7 @@ Formate como JSON:
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex flex-col lg:flex-row">
       {/* Menu Lateral */}
       <SideMenu
         activeTab={activeTab}
@@ -3213,55 +3925,54 @@ Formate como JSON:
       
       {/* Conteúdo Principal */}
       <div className="flex-1 overflow-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground flex items-center">
-                <Globe className="h-8 w-8 text-green-600 mr-3" />
-                Construtor de Mundo
-              </h1>
-              <p className="text-muted-foreground mt-2">
-                Crie mundos ricos e detalhados para suas histórias
-              </p>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              {showStats && (
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-foreground">{worldStats.totalElements}</div>
-                  <div className="text-sm text-muted-foreground">elementos criados</div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+          {/* Header */}
+          <div className="mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center">
+                  <Globe className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 mr-2 sm:mr-3 flex-shrink-0" />
+                  <span className="truncate">Construtor de Mundo</span>
+                </h1>
+                <p className="text-muted-foreground mt-2 text-sm sm:text-base">
+                  Crie mundos ricos e detalhados para suas histórias
+                </p>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                {showStats && (
+                  <div className="text-right">
+                    <div className="text-xl sm:text-2xl font-bold text-foreground">{worldStats.totalElements}</div>
+                    <div className="text-xs sm:text-sm text-muted-foreground">elementos criados</div>
+                  </div>
+                )}
+                
+                <div className="flex items-center space-x-2 sm:space-x-4">
+                  <button
+                    onClick={() => setShowStats(!showStats)}
+                    className="btn-ghost p-2"
+                  >
+                    {showStats ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                  
+                  <button className="btn-outline flex items-center text-sm">
+                    <Download className="h-4 w-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Exportar</span>
+                  </button>
+                  
+                  <button className="btn-outline flex items-center text-sm">
+                    <Upload className="h-4 w-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Importar</span>
+                  </button>
                 </div>
-              )}
-              
-              <button
-                onClick={() => setShowStats(!showStats)}
-                className="btn-ghost"
-              >
-                {showStats ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-              
-              <button className="btn-outline flex items-center">
-                <Download className="h-4 w-4 mr-2" />
-                Exportar
-              </button>
-              
-              <button className="btn-outline flex items-center">
-                <Upload className="h-4 w-4 mr-2" />
-                Importar
-              </button>
+              </div>
             </div>
           </div>
+
+          {/* Conteúdo principal */}
+          {renderMainContent()}
         </div>
-
-
-
-        {/* Conteúdo principal */}
-        {renderMainContent()}
       </div>
-
-
 
       {/* Modals */}
       {formType === 'location' && (
@@ -3450,8 +4161,7 @@ Formate como JSON:
       )}
 
       <ToastContainer />
-        </div>
-      </div>
+    </div>
   );
 };
 

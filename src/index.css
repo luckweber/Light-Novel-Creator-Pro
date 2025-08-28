@@ -110,40 +110,70 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    /* Melhor suporte para mobile */
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Melhor suporte para touch em dispositivos móveis */
+  @media (hover: none) and (pointer: coarse) {
+    .btn-primary,
+    .btn-secondary,
+    .btn-outline,
+    .btn-ghost,
+    .btn-danger,
+    .btn-success {
+      @apply min-h-[44px] min-w-[44px];
+    }
+  }
+
+  /* Prevenir zoom em inputs no iOS */
+  @media screen and (max-width: 768px) {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="search"],
+    input[type="tel"],
+    input[type="url"],
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-primary-600 hover:bg-primary-700 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md;
+    @apply bg-primary-600 hover:bg-primary-700 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
   }
   
   .btn-secondary {
-    @apply bg-secondary-600 hover:bg-secondary-700 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md;
+    @apply bg-secondary-600 hover:bg-secondary-700 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
   }
   
   .btn-outline {
-    @apply border border-input hover:bg-accent hover:text-foreground text-foreground font-medium py-2.5 px-4 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md;
+    @apply border border-input hover:bg-accent hover:text-foreground text-foreground font-medium py-2.5 px-4 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
   }
   
   .btn-ghost {
-    @apply text-muted-foreground hover:text-foreground hover:bg-accent font-medium py-2 px-3 rounded-lg transition-all duration-200;
+    @apply text-muted-foreground hover:text-foreground hover:bg-accent font-medium py-2 px-3 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
   }
   
   .btn-danger {
-    @apply bg-destructive hover:bg-destructive/90 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md;
+    @apply bg-destructive hover:bg-destructive/90 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
   }
   
   .btn-success {
-    @apply bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md;
+    @apply bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
   }
   
   .card {
-    @apply bg-card text-foreground rounded-xl shadow-sm border border-border p-6 transition-all duration-200 hover:shadow-md;
+    @apply bg-card text-foreground rounded-xl shadow-sm border border-border p-4 sm:p-6 transition-all duration-200 hover:shadow-md;
   }
   
   .card-compact {
-    @apply bg-card text-foreground rounded-lg shadow-sm border border-border p-4;
+    @apply bg-card text-foreground rounded-lg shadow-sm border border-border p-3 sm:p-4;
   }
   
   .input-field {
@@ -183,7 +213,7 @@
   }
   
   .sidebar-item {
-    @apply flex items-center px-4 py-2 text-muted-foreground hover:bg-accent hover:text-foreground rounded-md transition-colors duration-200 cursor-pointer;
+    @apply flex items-center px-3 sm:px-4 py-2 text-muted-foreground hover:bg-accent hover:text-foreground rounded-md transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1;
   }
   
   .sidebar-item.active {
@@ -196,6 +226,74 @@
   
   .animate-slide-up {
     animation: slideUp 0.3s ease-out;
+  }
+
+  /* Responsive grid utilities */
+  .responsive-grid {
+    @apply grid gap-4 sm:gap-6;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+
+  .responsive-grid-compact {
+    @apply grid gap-3 sm:gap-4;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+
+  /* Responsive text utilities */
+  .text-responsive-lg {
+    @apply text-lg sm:text-xl lg:text-2xl;
+  }
+
+  .text-responsive-xl {
+    @apply text-xl sm:text-2xl lg:text-3xl;
+  }
+
+  .text-responsive-2xl {
+    @apply text-2xl sm:text-3xl lg:text-4xl;
+  }
+
+  /* Responsive spacing utilities */
+  .space-responsive-y {
+    @apply space-y-4 sm:space-y-6 lg:space-y-8;
+  }
+
+  .space-responsive-x {
+    @apply space-x-2 sm:space-x-4 lg:space-x-6;
+  }
+
+  /* Mobile-first responsive containers */
+  .container-responsive {
+    @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .container-responsive-sm {
+    @apply w-full max-w-4xl mx-auto px-4 sm:px-6;
+  }
+
+  /* Responsive flex utilities */
+  .flex-responsive {
+    @apply flex flex-col sm:flex-row;
+  }
+
+  .flex-responsive-reverse {
+    @apply flex flex-col-reverse sm:flex-row;
+  }
+
+  /* Responsive visibility utilities */
+  .mobile-only {
+    @apply block sm:hidden;
+  }
+
+  .desktop-only {
+    @apply hidden sm:block;
+  }
+
+  .tablet-up {
+    @apply hidden md:block;
+  }
+
+  .mobile-tablet-only {
+    @apply block lg:hidden;
   }
 }
 
@@ -267,3 +365,60 @@
 .dark .ql-container {
   @apply border-gray-700;
 }
+
+/* Responsive breakpoints for better mobile experience */
+@media (max-width: 640px) {
+  .ql-editor {
+    min-height: 300px;
+  }
+  
+  .ql-toolbar {
+    @apply flex-wrap;
+  }
+  
+  .ql-toolbar .ql-formats {
+    @apply mb-2;
+  }
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+  .btn-primary,
+  .btn-secondary,
+  .btn-outline,
+  .btn-ghost,
+  .btn-danger,
+  .btn-success {
+    @apply min-h-[44px];
+  }
+  
+  .sidebar-item {
+    @apply min-h-[44px];
+  }
+  
+  .input-field,
+  .textarea-field,
+  .select-field {
+    @apply min-h-[44px];
+  }
+}
+
+/* Print styles */
+@media print {
+  .sidebar-item,
+  .btn-primary,
+  .btn-secondary,
+  .btn-outline,
+  .btn-ghost,
+  .btn-danger,
+  .btn-success {
+    @apply shadow-none;
+  }
+  
+  .card {
+    @apply shadow-none border-gray-300;
+  }
+}
+
+/* Import responsive utilities */
+@import './styles/responsive.css';

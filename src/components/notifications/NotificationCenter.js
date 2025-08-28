@@ -107,11 +107,11 @@ const NotificationCenter = () => {
 
       {/* Painel de notificações */}
       {isOpen && (
-        <div className="absolute right-0 top-12 w-96 max-h-96 bg-card border border-border rounded-lg shadow-lg z-50">
+        <div className="absolute right-0 top-12 w-80 sm:w-96 max-h-80 sm:max-h-96 bg-card border border-border rounded-lg shadow-lg z-50">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-border">
-            <h3 className="text-lg font-semibold text-foreground">Notificações</h3>
-            <div className="flex items-center space-x-2">
+          <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border">
+            <h3 className="text-base sm:text-lg font-semibold text-foreground">Notificações</h3>
+            <div className="flex items-center space-x-1 sm:space-x-2">
               <button
                 onClick={requestDesktopPermission}
                 className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -143,11 +143,11 @@ const NotificationCenter = () => {
           </div>
 
           {/* Filtros */}
-          <div className="p-3 border-b border-border">
-            <div className="flex space-x-2">
+          <div className="p-2 sm:p-3 border-b border-border">
+            <div className="flex space-x-1 sm:space-x-2">
               <button
                 onClick={() => setFilter('all')}
-                className={`px-3 py-1 text-xs rounded-full transition-colors ${
+                className={`px-2 sm:px-3 py-1 text-xs rounded-full transition-colors ${
                   filter === 'all' 
                     ? 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-100' 
                     : 'bg-muted text-muted-foreground hover:bg-accent'
@@ -157,7 +157,7 @@ const NotificationCenter = () => {
               </button>
               <button
                 onClick={() => setFilter('unread')}
-                className={`px-3 py-1 text-xs rounded-full transition-colors ${
+                className={`px-2 sm:px-3 py-1 text-xs rounded-full transition-colors ${
                   filter === 'unread' 
                     ? 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-100' 
                     : 'bg-muted text-muted-foreground hover:bg-accent'
@@ -169,26 +169,26 @@ const NotificationCenter = () => {
           </div>
 
           {/* Lista de notificações */}
-          <div className="max-h-64 overflow-y-auto">
+          <div className="max-h-48 sm:max-h-64 overflow-y-auto">
             {filteredNotifications.length === 0 ? (
-              <div className="p-6 text-center text-muted-foreground">
-                <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Nenhuma notificação</p>
+              <div className="p-4 sm:p-6 text-center text-muted-foreground">
+                <Bell className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-xs sm:text-sm">Nenhuma notificação</p>
               </div>
             ) : (
-              <div className="space-y-1 p-2">
+              <div className="space-y-1 p-1 sm:p-2">
                 {filteredNotifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`p-3 rounded-lg border transition-all ${
+                    className={`p-2 sm:p-3 rounded-lg border transition-all ${
                       getNotificationBgColor(notification.type)
                     } ${!notification.read ? 'ring-2 ring-primary-200 dark:ring-primary-800' : ''}`}
                   >
-                    <div className="flex items-start space-x-3">
+                    <div className="flex items-start space-x-2 sm:space-x-3">
                       {getNotificationIcon(notification.type)}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between">
-                          <h4 className="text-sm font-medium text-foreground">
+                          <h4 className="text-xs sm:text-sm font-medium text-foreground">
                             {notification.title}
                           </h4>
                           <div className="flex items-center space-x-1 ml-2">

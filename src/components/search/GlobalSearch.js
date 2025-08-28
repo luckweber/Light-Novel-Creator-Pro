@@ -190,50 +190,50 @@ const GlobalSearch = () => {
       {/* Search Trigger */}
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center space-x-2 px-3 py-2 bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+        className="flex items-center space-x-2 px-2 sm:px-3 py-2 bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors"
       >
         <Search className="h-4 w-4" />
-        <span className="hidden md:block">Buscar...</span>
-        <kbd className="hidden md:inline-flex items-center px-2 py-1 text-xs bg-background border border-border rounded">
+        <span className="hidden sm:block">Buscar...</span>
+        <kbd className="hidden lg:inline-flex items-center px-2 py-1 text-xs bg-background border border-border rounded">
           Ctrl+K
         </kbd>
       </button>
 
       {/* Search Modal */}
       {isOpen && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-start justify-center pt-20">
-          <div className="bg-card border border-border rounded-lg shadow-lg w-full max-w-2xl mx-4 max-h-[80vh] overflow-hidden">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-start justify-center pt-4 sm:pt-20 px-4">
+          <div className="bg-card border border-border rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] sm:max-h-[80vh] overflow-hidden">
             {/* Search Header */}
-            <div className="p-4 border-b border-border">
-              <div className="flex items-center space-x-3">
-                <Search className="h-5 w-5 text-muted-foreground" />
+            <div className="p-3 sm:p-4 border-b border-border">
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <Search className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground flex-shrink-0" />
                 <input
                   ref={searchInputRef}
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Buscar em projetos, personagens, locais, lore..."
-                  className="flex-1 bg-transparent text-foreground placeholder-muted-foreground outline-none"
+                  className="flex-1 bg-transparent text-foreground placeholder-muted-foreground outline-none text-sm sm:text-base"
                 />
                 <button
                   onClick={() => setIsOpen(false)}
                   className="p-1 text-muted-foreground hover:text-foreground"
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
               </div>
             </div>
 
             {/* Filters */}
-            <div className="px-4 py-2 border-b border-border">
-              <div className="flex space-x-2 overflow-x-auto">
+            <div className="px-3 sm:px-4 py-2 border-b border-border">
+              <div className="flex space-x-1 sm:space-x-2 overflow-x-auto pb-1">
                 {filters.map(filter => {
                   const FilterIcon = filter.icon;
                   return (
                     <button
                       key={filter.id}
                       onClick={() => setActiveFilter(filter.id)}
-                      className={`flex items-center space-x-1 px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
+                      className={`flex items-center space-x-1 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm whitespace-nowrap transition-colors flex-shrink-0 ${
                         activeFilter === filter.id
                           ? 'bg-primary-600 text-white'
                           : 'bg-muted text-muted-foreground hover:text-foreground'
@@ -248,12 +248,12 @@ const GlobalSearch = () => {
             </div>
 
             {/* Search Results */}
-            <div className="overflow-y-auto max-h-96">
+            <div className="overflow-y-auto max-h-64 sm:max-h-96">
               {searchTerm && searchResults.length === 0 ? (
-                <div className="p-8 text-center">
-                  <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-lg font-medium text-foreground mb-2">Nenhum resultado encontrado</h3>
-                  <p className="text-muted-foreground">
+                <div className="p-6 sm:p-8 text-center">
+                  <Search className="h-8 w-8 sm:h-12 sm:w-12 mx-auto mb-3 sm:mb-4 text-muted-foreground" />
+                  <h3 className="text-base sm:text-lg font-medium text-foreground mb-2">Nenhum resultado encontrado</h3>
+                  <p className="text-sm text-muted-foreground">
                     Tente usar termos diferentes ou verificar a ortografia
                   </p>
                 </div>
@@ -266,35 +266,35 @@ const GlobalSearch = () => {
                         key={`${result.type}-${result.id}-${index}`}
                         to={result.href}
                         onClick={handleResultClick}
-                        className="flex items-center space-x-3 p-4 hover:bg-accent transition-colors"
+                        className="flex items-center space-x-2 sm:space-x-3 p-3 sm:p-4 hover:bg-accent transition-colors"
                       >
-                        <div className="p-2 rounded-lg bg-muted">
-                          <ResultIcon className="h-4 w-4 text-muted-foreground" />
+                        <div className="p-1.5 sm:p-2 rounded-lg bg-muted flex-shrink-0">
+                          <ResultIcon className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-foreground truncate">
+                          <h4 className="font-medium text-foreground truncate text-sm sm:text-base">
                             {result.title}
                           </h4>
-                          <p className="text-sm text-muted-foreground truncate">
+                          <p className="text-xs sm:text-sm text-muted-foreground truncate">
                             {result.subtitle}
                           </p>
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="text-xs text-muted-foreground truncate hidden sm:block">
                             {result.description}
                           </p>
                         </div>
-                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                        <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
                       </Link>
                     );
                   })}
                 </div>
               ) : (
-                <div className="p-8 text-center">
-                  <Sparkles className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-lg font-medium text-foreground mb-2">Busca Global</h3>
-                  <p className="text-muted-foreground mb-4">
+                <div className="p-6 sm:p-8 text-center">
+                  <Sparkles className="h-8 w-8 sm:h-12 sm:w-12 mx-auto mb-3 sm:mb-4 text-muted-foreground" />
+                  <h3 className="text-base sm:text-lg font-medium text-foreground mb-2">Busca Global</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
                     Encontre rapidamente qualquer conteúdo em sua aplicação
                   </p>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
                     <div className="text-left">
                       <p className="font-medium text-foreground mb-2">Dicas de busca:</p>
                       <ul className="text-muted-foreground space-y-1">
@@ -318,11 +318,11 @@ const GlobalSearch = () => {
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-border bg-muted/50">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="p-3 sm:p-4 border-t border-border bg-muted/50">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-muted-foreground space-y-2 sm:space-y-0">
                 <span>{searchResults.length} resultado{searchResults.length !== 1 ? 's' : ''}</span>
-                <div className="flex items-center space-x-4">
-                  <span>↑↓ para navegar</span>
+                <div className="flex items-center space-x-2 sm:space-x-4 text-xs">
+                  <span className="hidden sm:inline">↑↓ para navegar</span>
                   <span>Enter para selecionar</span>
                   <span>Esc para fechar</span>
                 </div>

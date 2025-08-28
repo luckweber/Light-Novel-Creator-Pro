@@ -53,6 +53,18 @@ const Layout = ({ children }) => {
     };
   }, []);
 
+  // Fechar sidebar em telas grandes quando redimensionar
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024 && sidebarOpen) {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [sidebarOpen]);
+
   const navigation = [
     { name: 'Dashboard', href: '/', icon: BookOpen },
     { name: 'Editor', href: '/editor', icon: Edit3 },
@@ -147,7 +159,7 @@ const Layout = ({ children }) => {
     
     if (!currentProvider || !providerConfig?.apiKey) {
       return (
-        <div className="flex items-center px-3 py-1 bg-muted rounded-full text-sm text-muted-foreground">
+        <div className="hidden sm:flex items-center px-3 py-1 bg-muted rounded-full text-sm text-muted-foreground">
           <Zap className="h-4 w-4 mr-1 text-muted-foreground" />
           <span>IA não configurada</span>
         </div>
@@ -169,7 +181,7 @@ const Layout = ({ children }) => {
     };
 
     return (
-      <div className={`flex items-center px-3 py-1 rounded-full text-sm ${providerColors[currentProvider] || 'bg-muted text-muted-foreground'}`}>
+      <div className={`hidden sm:flex items-center px-3 py-1 rounded-full text-sm ${providerColors[currentProvider] || 'bg-muted text-muted-foreground'}`}>
         <Zap className="h-4 w-4 mr-1" />
         <span className="font-medium">{providerNames[currentProvider] || currentProvider}</span>
         {providerConfig.defaultModel && (
@@ -187,16 +199,16 @@ const Layout = ({ children }) => {
       <div className="relative" ref={projectDropdownRef}>
         <button
           onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
-          className="flex items-center space-x-3 px-4 py-2 bg-card border border-border rounded-lg hover:bg-accent transition-colors"
+          className="flex items-center space-x-3 px-3 sm:px-4 py-2 bg-card border border-border rounded-lg hover:bg-accent transition-colors min-w-0"
         >
-          <div className="flex items-center space-x-3">
-            <Book className="h-5 w-5 text-primary-600" />
-            <div className="text-left">
-              <div className="font-medium text-card-foreground">
+          <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+            <Book className="h-4 w-4 sm:h-5 sm:w-5 text-primary-600 flex-shrink-0" />
+            <div className="text-left min-w-0">
+              <div className="font-medium text-card-foreground truncate max-w-[120px] sm:max-w-[200px] lg:max-w-[250px]">
                 {currentProject?.name || 'Selecionar Projeto'}
               </div>
               {currentProject && (
-                <div className="text-xs text-muted-foreground flex items-center space-x-2">
+                <div className="text-xs text-muted-foreground hidden sm:flex items-center space-x-2">
                   <span>{stats.chapters} capítulos</span>
                   <span>•</span>
                   <span>{stats.wordCount.toLocaleString()} palavras</span>
@@ -206,11 +218,11 @@ const Layout = ({ children }) => {
               )}
             </div>
           </div>
-          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${projectDropdownOpen ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform flex-shrink-0 ${projectDropdownOpen ? 'rotate-180' : ''}`} />
         </button>
 
         {projectDropdownOpen && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto min-w-[280px] sm:min-w-[320px]">
             <div className="p-2">
               {projects && projects.length > 0 ? (
                 <div className="space-y-1">
@@ -229,10 +241,10 @@ const Layout = ({ children }) => {
                         }`}
                       >
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <Book className={`h-4 w-4 ${isSelected ? 'text-primary-600' : 'text-muted-foreground'}`} />
-                            <div>
-                              <div className="font-medium text-card-foreground">{project.name}</div>
+                          <div className="flex items-center space-x-3 min-w-0">
+                            <Book className={`h-4 w-4 ${isSelected ? 'text-primary-600' : 'text-muted-foreground'} flex-shrink-0`} />
+                            <div className="min-w-0">
+                              <div className="font-medium text-card-foreground truncate">{project.name}</div>
                               <div className="text-xs text-muted-foreground flex items-center space-x-2">
                                 <span>{projectStats.chapters} capítulos</span>
                                 <span>•</span>
@@ -243,7 +255,7 @@ const Layout = ({ children }) => {
                             </div>
                           </div>
                           {isSelected && (
-                            <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
+                            <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
                           )}
                         </div>
                       </button>
@@ -281,8 +293,8 @@ const Layout = ({ children }) => {
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-card shadow-lg transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}>
-        <div className="flex items-center justify-between h-16 px-6 border-b border-border">
-          <h1 className="text-xl font-bold text-card-foreground">Light Novel Creator</h1>
+        <div className="flex items-center justify-between h-16 px-4 sm:px-6 border-b border-border">
+          <h1 className="text-lg sm:text-xl font-bold text-card-foreground truncate">Light Novel Creator</h1>
           <button
             onClick={() => setSidebarOpen(false)}
             className="lg:hidden p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -291,7 +303,7 @@ const Layout = ({ children }) => {
           </button>
         </div>
         
-        <nav className="mt-6 px-3">
+        <nav className="mt-6 px-3 flex-1 overflow-y-auto">
           <div className="space-y-1">
             {navigation.map((item) => {
               const isActive = location.pathname === item.href;
@@ -302,8 +314,8 @@ const Layout = ({ children }) => {
                   className={`sidebar-item ${isActive ? 'active' : ''}`}
                   onClick={() => setSidebarOpen(false)}
                 >
-                  <item.icon className="mr-3 h-5 w-5" />
-                  {item.name}
+                  <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
+                  <span className="truncate">{item.name}</span>
                 </Link>
               );
             })}
@@ -311,14 +323,15 @@ const Layout = ({ children }) => {
         </nav>
 
         {/* Project Actions */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border bg-card">
           <div className="space-y-2">
             <button
               onClick={handleNewProject}
               className="w-full btn-primary flex items-center justify-center"
             >
               <Plus className="mr-2 h-4 w-4" />
-              Novo Projeto
+              <span className="hidden sm:inline">Novo Projeto</span>
+              <span className="sm:hidden">Novo</span>
             </button>
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -327,6 +340,7 @@ const Layout = ({ children }) => {
                 title="Exportar Projeto"
               >
                 <Download className="h-4 w-4" />
+                <span className="hidden sm:ml-1 sm:inline">Exportar</span>
               </button>
               <button
                 onClick={handleImport}
@@ -334,6 +348,7 @@ const Layout = ({ children }) => {
                 title="Importar Projeto"
               >
                 <Upload className="h-4 w-4" />
+                <span className="hidden sm:ml-1 sm:inline">Importar</span>
               </button>
             </div>
           </div>
@@ -344,8 +359,8 @@ const Layout = ({ children }) => {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <header className="bg-card shadow-sm border-b border-border">
-          <div className="flex items-center justify-between h-16 px-6">
-            <div className="flex items-center space-x-4">
+          <div className="flex items-center justify-between h-16 px-4 sm:px-6">
+            <div className="flex items-center space-x-2 sm:space-x-4 min-w-0">
               <button
                 onClick={() => setSidebarOpen(true)}
                 className="lg:hidden p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -356,7 +371,7 @@ const Layout = ({ children }) => {
               <ProjectSelector />
             </div>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               <GlobalSearch />
               <NotificationCenter />
               <AIStatusIndicator />
@@ -364,7 +379,7 @@ const Layout = ({ children }) => {
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={handleExport}
-                    className="btn-outline flex items-center"
+                    className="btn-outline flex items-center hidden sm:flex"
                     title="Exportar Projeto"
                   >
                     <Download className="mr-2 h-4 w-4" />
@@ -375,7 +390,8 @@ const Layout = ({ children }) => {
                     className="btn-primary flex items-center"
                   >
                     <Save className="mr-2 h-4 w-4" />
-                    Salvar
+                    <span className="hidden sm:inline">Salvar</span>
+                    <span className="sm:hidden">Salvar</span>
                   </button>
                 </div>
               )}
@@ -385,7 +401,7 @@ const Layout = ({ children }) => {
 
         {/* Page Content */}
         <main className="flex-1 overflow-auto">
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {children}
           </div>
         </main>

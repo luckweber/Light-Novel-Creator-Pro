@@ -67,7 +67,7 @@ const Editor = () => {
   const [showAIHelper, setShowAIHelper] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showAdvancedAI, setShowAdvancedAI] = useState(false);
-  const [showChapterNav, setShowChapterNav] = useState(true);
+  const [showChapterNav, setShowChapterNav] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showBackupManager, setShowBackupManager] = useState(false);
   const [showConsistencyChecker, setShowConsistencyChecker] = useState(false);
@@ -98,110 +98,68 @@ const Editor = () => {
 
   const formats = useMemo(() => [
     'header', 'bold', 'italic', 'underline', 'strike',
-    'list', 'bullet', 'align', 'link', 'image', 
-    'blockquote', 'code-block', 'color', 'background'
+    'list', 'bullet', 'align', 'link', 'image', 'blockquote', 'code-block',
+    'color', 'background'
   ], []);
 
-  // Memoized statistics calculation
+  // Estatísticas do texto
   const statistics = useMemo(() => {
     const text = editorContent.replace(/<[^>]*>/g, '');
-    const words = text.split(/\s+/).filter(word => word.length > 0);
+    const words = text.trim().split(/\s+/).filter(word => word.length > 0);
     const chars = text.length;
-    const readingTimeMinutes = Math.ceil(words.length / 200);
+    const paragraphs = editorContent.split('</p>').length - 1;
+    const readingTimeMinutes = Math.ceil(words.length / 200); // 200 palavras por minuto
 
     return {
       wordCount: words.length,
       charCount: chars,
-      readingTime: readingTimeMinutes,
-      paragraphCount: (editorContent.match(/<p>/g) || []).length
+      paragraphCount: paragraphs,
+      readingTime: readingTimeMinutes
     };
   }, [editorContent]);
 
-  // Update statistics when they change
+  // Atualizar estatísticas
   useEffect(() => {
     setWordCount(statistics.wordCount);
     setCharCount(statistics.charCount);
     setReadingTime(statistics.readingTime);
-    
-    // Check writing progress for notifications
-    checkWritingProgress(statistics.wordCount);
   }, [statistics]);
 
-  // Optimized auto-save functionality
-  const handleAutoSave = useCallback(() => {
-    if (editorContent && currentChapter && currentVolume) {
-      updateChapter(currentVolume.id, currentChapter.id, { content: editorContent });
-      addToHistory(editorContent);
-      toast.success('Capítulo salvo automaticamente!', { duration: 1000 });
-    }
-  }, [editorContent, currentChapter, currentVolume, updateChapter, addToHistory]);
-
+  // Auto-save
   useEffect(() => {
-    // Clear existing timeout
     if (autoSaveTimeoutRef.current) {
       clearTimeout(autoSaveTimeoutRef.current);
     }
 
-    // Set new timeout for auto-save
-    if (editorContent && settings?.autoSave !== false) {
-      const interval = settings?.autoSaveInterval || 30;
-      autoSaveTimeoutRef.current = setTimeout(handleAutoSave, interval * 1000);
-    }
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      if (editorContent.trim()) {
+        addToHistory(editorContent);
+        trackEvent('editor_auto_save');
+      }
+    }, 30000); // Auto-save a cada 30 segundos
 
     return () => {
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
       }
     };
-  }, [editorContent, handleAutoSave, settings?.autoSave, settings?.autoSaveInterval]);
+  }, [editorContent, addToHistory]);
 
-  // Load chapter content when selected
+  // Sessão de escrita
   useEffect(() => {
-    if (currentChapter && currentChapter.content !== editorContent) {
-      setEditorContent(currentChapter.content || '');
-    }
-  }, [currentChapter, editorContent]);
-
-  // Monitor writing session for notifications
-  useEffect(() => {
-    // Start session monitoring when component mounts
-    const startTime = Date.now();
-    setSessionStartTime(startTime);
-    
-    // Check session duration every 5 minutes
     sessionIntervalRef.current = setInterval(() => {
-      const sessionDuration = Date.now() - startTime;
+      const sessionDuration = Date.now() - sessionStartTime;
       checkWritingSession(sessionDuration);
-    }, 5 * 60 * 1000); // 5 minutes
+    }, 60000); // Verificar a cada minuto
 
     return () => {
       if (sessionIntervalRef.current) {
         clearInterval(sessionIntervalRef.current);
       }
     };
-  }, [checkWritingSession]);
+  }, [sessionStartTime, checkWritingSession]);
 
-  // Optimized CSS application - only run once after mount
-  useEffect(() => {
-    const applyEditorStyles = () => {
-      const editors = document.querySelectorAll('.ql-editor, .ql-container');
-      editors.forEach(editor => {
-        editor.style.backgroundColor = '#ffffff';
-        editor.style.color = '#1f2937';
-      });
-      
-      const toolbar = document.querySelector('.ql-toolbar');
-      if (toolbar) {
-        toolbar.style.backgroundColor = '#ffffff';
-      }
-    };
-
-    // Apply styles after a short delay to ensure Quill is rendered
-    const timer = setTimeout(applyEditorStyles, 100);
-    return () => clearTimeout(timer);
-  }, []); // Run only once on mount
-
-  // Close dropdown when clicking outside
+  // Fechar dropdown quando clicar fora
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (showToolsDropdown && !event.target.closest('.relative')) {
@@ -215,486 +173,380 @@ const Editor = () => {
     };
   }, [showToolsDropdown]);
 
-  // Função para selecionar capítulo
-  const handleChapterSelect = useCallback((volume, chapter) => {
-    // Salvar capítulo atual antes de trocar
-    if (currentChapter && currentVolume && editorContent !== currentChapter.content) {
-      updateChapter(currentVolume.id, currentChapter.id, { content: editorContent });
-    }
-    
-    setCurrentVolume(volume);
-    setCurrentChapter(chapter);
-  }, [currentChapter, currentVolume, editorContent, updateChapter, setCurrentVolume, setCurrentChapter]);
+  // Verificar progresso de escrita
+  useEffect(() => {
+    checkWritingProgress(wordCount);
+  }, [wordCount, checkWritingProgress]);
 
-  // Função para salvar manualmente
   const handleManualSave = useCallback(() => {
-    if (currentChapter && currentVolume) {
-      updateChapter(currentVolume.id, currentChapter.id, { content: editorContent });
-      toast.success('Capítulo salvo!');
-      
-      // Track save event
-      trackEvent('chapter_saved', {
-        chapterId: currentChapter.id,
-        volumeId: currentVolume.id,
-        wordCount: statistics.wordCount
-      });
-    } else {
-      addToHistory(editorContent);
-      toast.success('Conteúdo salvo!');
-      
-      // Track save event
-      trackEvent('content_saved', {
-        wordCount: statistics.wordCount
-      });
-    }
-  }, [currentChapter, currentVolume, editorContent, updateChapter, addToHistory, statistics.wordCount]);
+    addToHistory(editorContent);
+    createManualVersion('Salvamento manual');
+    toast.success('Conteúdo salvo com sucesso!');
+    trackEvent('editor_manual_save');
+  }, [editorContent, addToHistory, createManualVersion]);
 
-  // Handle text selection for AI helper
   const handleSelectionChange = useCallback((range, source, editor) => {
     if (range && range.length > 0) {
-      const text = editor.getText(range.index, range.length);
-      setSelectedText(text);
+      const selectedText = editor.getText(range.index, range.length);
+      setSelectedText(selectedText);
     } else {
       setSelectedText('');
     }
   }, []);
 
-  // AI Helper functions
-  const generateWithAI = useCallback(async (promptType, customPrompt = '') => {
+  const handleChapterSelect = useCallback((chapter) => {
+    setCurrentChapter(chapter);
+    setShowChapterNav(false);
+    toast.success(`Capítulo "${chapter.title}" selecionado`);
+  }, [setCurrentChapter]);
+
+  const generateWithAI = useCallback(async (type, customPrompt = '') => {
     if (!settings?.defaultAIProvider) {
       toast.error('Configure um provedor de IA nas configurações');
       return;
     }
 
     setIsGenerating(true);
-    const toastId = toast.loading('Gerando texto com IA...');
+    const prompt = customPrompt || type;
 
     try {
-      const activeProvider = settings.aiProviders[settings.defaultAIProvider];
-      if (!activeProvider || !activeProvider.apiKey) {
-        throw new Error('Provedor de IA não configurado corretamente.');
+      const service = new AIService(settings.defaultAIProvider, settings.aiProviders[settings.defaultAIProvider].apiKey);
+      const result = await service.generateText(prompt);
+      
+      if (result) {
+        setEditorContent(prev => prev + '\n\n' + result);
+        toast.success('Texto gerado com sucesso!');
+        trackEvent('ai_text_generation', { type });
       }
-      
-      const aiService = new AIService(settings.defaultAIProvider, activeProvider.apiKey, {
-        model: activeProvider.defaultModel,
-        temperature: activeProvider.temperature,
-        maxTokens: activeProvider.maxTokens
-      });
-
-      // Criar contexto do mundo para a IA
-      const worldContext = {
-        project: currentProject?.name || 'Light Novel',
-        genre: currentProject?.genre || worldData?.genre,
-        characters: characters.map(c => ({ name: c.name, role: c.role })),
-        locations: worldData?.locations?.map(l => l.name) || [],
-        currentText: selectedText
-      };
-
-      // Construir prompt contextual
-      let fullPrompt = '';
-      if (customPrompt) {
-        fullPrompt = `${customPrompt}\n\nCONTEXTO DO PROJETO:\n${JSON.stringify(worldContext, null, 2)}\n\nResponda apenas com o texto da light novel, sem explicações adicionais.`;
-      } else {
-        const prompts = {
-          'continuar': `Continue escrevendo esta light novel de forma natural e envolvente. ${selectedText ? `Baseie-se no texto selecionado: "${selectedText}"` : 'Continue a partir do contexto atual.'}`,
-          'descrever personagem': `Crie uma descrição detalhada e envolvente de um personagem para esta light novel. ${selectedText ? `Contexto: "${selectedText}"` : ''}`,
-          'cena de ação': `Escreva uma cena de ação dinâmica e emocionante para esta light novel. ${selectedText ? `Baseie-se em: "${selectedText}"` : ''}`,
-          'diálogo': `Crie um diálogo natural e interessante entre personagens desta light novel. ${selectedText ? `Contexto: "${selectedText}"` : ''}`,
-          'descrição de cenário': `Descreva um cenário ou ambiente de forma vívida e imersiva para esta light novel. ${selectedText ? `Baseie-se em: "${selectedText}"` : ''}`,
-          'transição': `Crie uma transição suave e natural entre cenas desta light novel. ${selectedText ? `A partir de: "${selectedText}"` : ''}`,
-          'melhorar': selectedText ? `Melhore e reescreva este trecho de forma mais envolvente: "${selectedText}"` : 'Melhore o texto atual.'
-        };
-
-        fullPrompt = prompts[promptType] || prompts['continuar'];
-        fullPrompt += `\n\nCONTEXTO DO PROJETO:\n${JSON.stringify(worldContext, null, 2)}`;
-        fullPrompt += `\n\nResponda apenas com o texto da light novel, sem explicações adicionais.`;
-      }
-
-      const result = await aiService.generateText(fullPrompt);
-      
-      // Inserir o texto gerado no editor
-      if (quillRef.current) {
-        const quill = quillRef.current.getEditor();
-        const range = quill.getSelection();
-        
-        if (promptType === 'melhorar' && selectedText && range) {
-          // Substituir texto selecionado
-          quill.deleteText(range.index, range.length);
-          quill.insertText(range.index, result);
-        } else if (range) {
-          // Inserir na posição do cursor
-          quill.insertText(range.index, result);
-        } else {
-          // Inserir no final
-          quill.insertText(quill.getLength(), result);
-        }
-      }
-      
-      toast.success('Texto gerado com sucesso!', { id: toastId });
-      
-      // Track AI generation event
-      trackEvent('ai_text_generated', {
-        promptType: promptType,
-        wordCount: result.split(' ').length,
-        provider: settings.defaultAIProvider
-      });
     } catch (error) {
-      toast.error(`Erro ao gerar texto: ${error.message}`, { id: toastId });
-      
-      // Track error event
-      trackEvent('ai_generation_error', {
-        error: error.message,
-        promptType: promptType
-      });
+      toast.error('Erro ao gerar texto: ' + error.message);
     } finally {
       setIsGenerating(false);
     }
-  }, [settings, currentProject, characters, worldData, selectedText]);
+  }, [settings, setEditorContent]);
 
-  // Função para lidar com geração avançada de IA
-  const handleAdvancedAIGeneration = useCallback(async (context) => {
-    setShowAdvancedAI(false);
-    
-    const promptTypes = {
-      continue: 'continuar',
-      character: 'descrever personagem',
-      scene: 'descrição de cenário',
-      dialogue: 'diálogo',
-      action: 'cena de ação',
-      custom: 'custom'
-    };
-
-    if (context.type === 'custom') {
-      await generateWithAI('custom', context.prompt);
-    } else {
-      await generateWithAI(promptTypes[context.type], context.prompt);
+  const handleAdvancedAIGeneration = useCallback(async (prompt, context) => {
+    setIsGenerating(true);
+    try {
+      const service = new AIService(settings.defaultAIProvider, settings.aiProviders[settings.defaultAIProvider].apiKey);
+      const result = await service.generateText(prompt, context);
+      
+      if (result) {
+        setEditorContent(prev => prev + '\n\n' + result);
+        toast.success('Texto avançado gerado com sucesso!');
+      }
+    } catch (error) {
+      toast.error('Erro ao gerar texto avançado: ' + error.message);
+    } finally {
+      setIsGenerating(false);
     }
-  }, [generateWithAI]);
+  }, [settings, setEditorContent]);
 
-  // Advanced Export functions
+  const insertCharacter = useCallback((character) => {
+    const text = `[${character.name}]`;
+    if (quillRef.current) {
+      const range = quillRef.current.getSelection();
+      if (range) {
+        quillRef.current.insertText(range.index, text);
+      }
+    }
+    toast.success(`Personagem "${character.name}" inserido`);
+  }, []);
+
+  const insertLocation = useCallback((location) => {
+    const text = `[${location.name}]`;
+    if (quillRef.current) {
+      const range = quillRef.current.getSelection();
+      if (range) {
+        quillRef.current.insertText(range.index, text);
+      }
+    }
+    toast.success(`Local "${location.name}" inserido`);
+  }, []);
+
   const exportAsText = useCallback(() => {
     const text = editorContent.replace(/<[^>]*>/g, '');
     const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${currentProject?.name || 'novel'}.txt`;
+    a.download = `${currentChapter?.title || 'capitulo'}.txt`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('Exportado como texto!');
-  }, [editorContent, currentProject]);
+    toast.success('Arquivo exportado como texto');
+  }, [editorContent, currentChapter]);
 
   const exportAsHTML = useCallback(() => {
     const blob = new Blob([editorContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${currentProject?.name || 'novel'}.html`;
+    a.download = `${currentChapter?.title || 'capitulo'}.html`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('Exportado como HTML!');
-  }, [editorContent, currentProject]);
-
-  const handleExportPDF = useCallback(async () => {
-    const projectData = {
-      project: currentProject,
-      volumes: projectStructure.volumes,
-      worldData,
-      characters
-    };
-    
-    const result = await exportToPDF(projectData);
-    if (result.success) {
-      toast.success(result.message);
-    } else {
-      toast.error(`Erro ao exportar PDF: ${result.error}`);
-    }
-  }, [currentProject, projectStructure.volumes, worldData, characters]);
-
-  const handleExportEPUB = useCallback(async () => {
-    const projectData = {
-      project: currentProject,
-      volumes: projectStructure.volumes,
-      worldData,
-      characters
-    };
-    
-    const result = await exportToEPUB(projectData);
-    if (result.success) {
-      toast.success(result.message);
-    } else {
-      toast.error(`Erro ao exportar EPUB: ${result.error}`);
-    }
-  }, [currentProject, projectStructure.volumes, worldData, characters]);
+    toast.success('Arquivo exportado como HTML');
+  }, [editorContent, currentChapter]);
 
   const handleExportWord = useCallback(async () => {
-    const projectData = {
-      project: currentProject,
-      volumes: projectStructure.volumes,
-      worldData,
-      characters
-    };
-    
-    const result = await exportToWord(projectData);
-    if (result.success) {
-      toast.success(result.message);
-    } else {
-      toast.error(`Erro ao exportar Word: ${result.error}`);
+    try {
+      await exportToWord(editorContent, currentChapter?.title || 'capitulo');
+      toast.success('Arquivo Word exportado com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao exportar Word: ' + error.message);
     }
-  }, [currentProject, projectStructure.volumes, worldData, characters]);
+  }, [editorContent, currentChapter]);
 
-  const handleExportStatistics = useCallback(() => {
-    const projectData = {
-      project: currentProject,
-      volumes: projectStructure.volumes,
-      worldData,
-      characters
-    };
-    
-    const result = exportStatistics(projectData);
-    if (result.success) {
-      toast.success(result.message);
-    } else {
-      toast.error(`Erro ao exportar estatísticas: ${result.error}`);
+  const handleExportPDF = useCallback(async () => {
+    try {
+      await exportToPDF(editorContent, currentChapter?.title || 'capitulo');
+      toast.success('Arquivo PDF exportado com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao exportar PDF: ' + error.message);
     }
-  }, [currentProject, projectStructure.volumes, worldData, characters]);
+  }, [editorContent, currentChapter]);
 
-  const handleExportBackup = useCallback(() => {
-    const projectData = {
-      project: currentProject,
-      volumes: projectStructure.volumes,
-      worldData,
-      characters,
-      loreData: useStore.getState().loreData,
-      narrativeData: useStore.getState().narrativeData
-    };
-    
-    const result = exportBackup(projectData);
-    if (result.success) {
-      toast.success(result.message);
-    } else {
-      toast.error(`Erro ao exportar backup: ${result.error}`);
+  const handleExportEPUB = useCallback(async () => {
+    try {
+      await exportToEPUB(editorContent, currentChapter?.title || 'capitulo');
+      toast.success('Arquivo EPUB exportado com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao exportar EPUB: ' + error.message);
     }
-  }, [currentProject, projectStructure.volumes, worldData, characters]);
+  }, [editorContent, currentChapter]);
 
-  // Insert character reference
-  const insertCharacter = useCallback((character) => {
-    if (quillRef.current) {
-      const quill = quillRef.current.getEditor();
-      const range = quill.getSelection();
-      const insertText = `[${character.name}]`;
-      
-      if (range) {
-        quill.insertText(range.index, insertText);
-      } else {
-        quill.insertText(quill.getLength(), insertText);
-      }
+  const handleExportStatistics = useCallback(async () => {
+    try {
+      await exportStatistics(statistics, currentChapter?.title || 'capitulo');
+      toast.success('Estatísticas exportadas com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao exportar estatísticas: ' + error.message);
     }
-  }, []);
+  }, [statistics, currentChapter]);
 
-  // Insert location reference
-  const insertLocation = useCallback((location) => {
-    if (quillRef.current) {
-      const quill = quillRef.current.getEditor();
-      const range = quill.getSelection();
-      const insertText = `[${location.name}]`;
-      
-      if (range) {
-        quill.insertText(range.index, insertText);
-      } else {
-        quill.insertText(quill.getLength(), insertText);
-      }
+  const handleExportBackup = useCallback(async () => {
+    try {
+      await exportBackup({
+        content: editorContent,
+        chapter: currentChapter,
+        statistics
+      });
+      toast.success('Backup exportado com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao exportar backup: ' + error.message);
     }
-  }, []);
+  }, [editorContent, currentChapter, statistics]);
 
   return (
     <div className="h-full flex flex-col">
       {/* Editor Header */}
-      <div className="bg-card border-b border-border p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div>
-              <h1 className="text-xl font-semibold text-foreground">
+      <div className="bg-card border-b border-border p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 min-w-0">
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl font-semibold text-foreground truncate">
                 {currentChapter ? currentChapter.title : 'Editor de Texto'}
               </h1>
               {currentVolume && (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">
                   {currentVolume.title}
                 </p>
               )}
             </div>
-            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-              <FileText className="h-4 w-4" />
+            <div className="flex items-center space-x-2 text-xs sm:text-sm text-muted-foreground">
+              <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
               <span>{wordCount.toLocaleString()} palavras</span>
               <span>•</span>
-              <Clock className="h-4 w-4" />
+              <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
               <span>{readingTime} min de leitura</span>
             </div>
           </div>
           
-                     <div className="flex items-center space-x-2">
-             {/* Botões Principais */}
-             <button
-               onClick={handleManualSave}
-               className="btn-primary flex items-center"
-             >
-               <Save className="mr-2 h-4 w-4" />
-               Salvar
-             </button>
-             
-             {/* Botão de Versões - Posição Prominente */}
-             <button
-               onClick={() => setShowVersionControl(true)}
-               className="btn-secondary flex items-center bg-blue-600 hover:bg-blue-700 text-white"
-             >
-               <GitBranch className="mr-2 h-4 w-4" />
-               Versões
-             </button>
-             
-             <button
-               onClick={() => setShowAdvancedAI(true)}
-               className="btn-secondary flex items-center bg-purple-600 hover:bg-purple-700 text-white"
-             >
-               <Sparkles className="mr-2 h-4 w-4" />
-               IA Avançada
-             </button>
-             
-             <button
-               onClick={() => setShowAIHelper(!showAIHelper)}
-               className="btn-outline flex items-center"
-             >
-               <Sparkles className="mr-2 h-4 w-4" />
-               AI Helper
-             </button>
-             
-             <button
-               onClick={() => setIsPreview(!isPreview)}
-               className="btn-outline flex items-center"
-             >
-               {isPreview ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
-               {isPreview ? 'Editar' : 'Visualizar'}
-             </button>
-             
-             <button
-               onClick={() => setShowPDFExporter(true)}
-               className="btn-secondary flex items-center bg-green-600 hover:bg-green-700 text-white"
-             >
-               <FileText className="mr-2 h-4 w-4" />
-               Exportar PDF
-             </button>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2">
+            {/* Botões Principais */}
+            <button
+              onClick={handleManualSave}
+              className="btn-primary flex items-center text-sm"
+            >
+              <Save className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Salvar</span>
+              <span className="sm:hidden">Salvar</span>
+            </button>
+            
+            {/* Botão de Versões */}
+            <button
+              onClick={() => setShowVersionControl(true)}
+              className="btn-secondary flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm"
+            >
+              <GitBranch className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Versões</span>
+              <span className="sm:hidden">Versões</span>
+            </button>
+            
+            <button
+              onClick={() => setShowAdvancedAI(true)}
+              className="btn-secondary flex items-center bg-purple-600 hover:bg-purple-700 text-white text-sm"
+            >
+              <Sparkles className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">IA Avançada</span>
+              <span className="sm:hidden">IA</span>
+            </button>
+            
+            <button
+              onClick={() => setShowAIHelper(!showAIHelper)}
+              className="btn-outline flex items-center text-sm"
+            >
+              <Sparkles className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">AI Helper</span>
+              <span className="sm:hidden">AI</span>
+            </button>
+            
+            <button
+              onClick={() => setIsPreview(!isPreview)}
+              className="btn-outline flex items-center text-sm"
+            >
+              {isPreview ? <EyeOff className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> : <Eye className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />}
+              <span className="hidden sm:inline">{isPreview ? 'Editar' : 'Visualizar'}</span>
+              <span className="sm:hidden">{isPreview ? 'Editar' : 'Ver'}</span>
+            </button>
+            
+            <button
+              onClick={() => setShowPDFExporter(true)}
+              className="btn-secondary flex items-center bg-green-600 hover:bg-green-700 text-white text-sm"
+            >
+              <FileText className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Exportar PDF</span>
+              <span className="sm:hidden">PDF</span>
+            </button>
 
-             {/* Dropdown de Ferramentas */}
-             <div className="relative">
-               <button
-                 onClick={() => setShowToolsDropdown(!showToolsDropdown)}
-                 className="btn-outline flex items-center"
-               >
-                 <MoreHorizontal className="mr-2 h-4 w-4" />
-                 Ferramentas
-               </button>
-              
-              {showToolsDropdown && (
-                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
-                  <div className="py-2">
-                    <button
-                      onClick={() => {
-                        setShowChapterNav(!showChapterNav);
-                        setShowToolsDropdown(false);
-                      }}
-                      className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <BookOpen className="mr-3 h-4 w-4" />
-                      Navegador de Capítulos
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowAnalytics(!showAnalytics);
-                        setShowToolsDropdown(false);
-                      }}
-                      className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <BarChart3 className="mr-3 h-4 w-4" />
-                      Analytics
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowBackupManager(true);
-                        setShowToolsDropdown(false);
-                      }}
-                      className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <Save className="mr-3 h-4 w-4" />
-                      Gerenciar Backups
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowConsistencyChecker(true);
-                        setShowToolsDropdown(false);
-                      }}
-                      className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <CheckCircle className="mr-3 h-4 w-4" />
-                      Verificar Consistência
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowNovelReader(true);
-                        setShowToolsDropdown(false);
-                      }}
-                      className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <Book className="mr-3 h-4 w-4" />
-                      Leitor Virtual
-                    </button>
-                                         <button
-                       onClick={() => {
-                         setShowPDFExporter(true);
-                         setShowToolsDropdown(false);
-                       }}
-                       className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                     >
-                       <FileText className="mr-3 h-4 w-4" />
-                       Exportar PDF Profissional
-                     </button>
-                     
-                     <div className="border-t border-gray-200 my-2"></div>
-                     
-                     <button
-                       onClick={() => {
-                         setShowVersionControl(true);
-                         setShowToolsDropdown(false);
-                       }}
-                       className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                     >
-                       <GitBranch className="mr-3 h-4 w-4" />
-                       Controle de Versões
-                     </button>
-                  </div>
-                </div>
-              )}
+            {/* Dropdown de Ferramentas */}
+            <div className="relative">
+              <button
+                onClick={() => setShowToolsDropdown(!showToolsDropdown)}
+                className="btn-outline flex items-center text-sm"
+              >
+                <MoreHorizontal className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Ferramentas</span>
+                <span className="sm:hidden">...</span>
+              </button>
+             
+             {showToolsDropdown && (
+               <div className="absolute right-0 mt-2 w-48 sm:w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                 <div className="py-2">
+                   <button
+                     onClick={() => {
+                       setShowChapterNav(!showChapterNav);
+                       setShowToolsDropdown(false);
+                     }}
+                     className="w-full flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                   >
+                     <BookOpen className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4" />
+                     <span className="hidden sm:inline">Navegador de Capítulos</span>
+                     <span className="sm:hidden">Capítulos</span>
+                   </button>
+                   <button
+                     onClick={() => {
+                       setShowAnalytics(!showAnalytics);
+                       setShowToolsDropdown(false);
+                     }}
+                     className="w-full flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                   >
+                     <BarChart3 className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4" />
+                     <span className="hidden sm:inline">Analytics</span>
+                     <span className="sm:hidden">Analytics</span>
+                   </button>
+                   <button
+                     onClick={() => {
+                       setShowBackupManager(true);
+                       setShowToolsDropdown(false);
+                     }}
+                     className="w-full flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                   >
+                     <Save className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4" />
+                     <span className="hidden sm:inline">Gerenciar Backups</span>
+                     <span className="sm:hidden">Backups</span>
+                   </button>
+                   <button
+                     onClick={() => {
+                       setShowConsistencyChecker(true);
+                       setShowToolsDropdown(false);
+                     }}
+                     className="w-full flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                   >
+                     <CheckCircle className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4" />
+                     <span className="hidden sm:inline">Verificar Consistência</span>
+                     <span className="sm:hidden">Consistência</span>
+                   </button>
+                   <button
+                     onClick={() => {
+                       setShowNovelReader(true);
+                       setShowToolsDropdown(false);
+                     }}
+                     className="w-full flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                   >
+                     <Book className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4" />
+                     <span className="hidden sm:inline">Leitor Virtual</span>
+                     <span className="sm:hidden">Leitor</span>
+                   </button>
+                   <button
+                     onClick={() => {
+                       setShowPDFExporter(true);
+                       setShowToolsDropdown(false);
+                     }}
+                     className="w-full flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                   >
+                     <FileText className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4" />
+                     <span className="hidden sm:inline">Exportar PDF Profissional</span>
+                     <span className="sm:hidden">PDF Profissional</span>
+                   </button>
+                   
+                   <div className="border-t border-gray-200 my-2"></div>
+                   
+                   <button
+                     onClick={() => {
+                       setShowVersionControl(true);
+                       setShowToolsDropdown(false);
+                     }}
+                     className="w-full flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                   >
+                     <GitBranch className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4" />
+                     <span className="hidden sm:inline">Controle de Versões</span>
+                     <span className="sm:hidden">Versões</span>
+                   </button>
+                 </div>
+               </div>
+             )}
             </div>
           </div>
         </div>
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Chapter Navigator */}
+        {/* Chapter Navigator - Mobile: Drawer, Desktop: Sidebar */}
         {showChapterNav && (
-          <div className="w-64 bg-card border-r border-border">
-            <ChapterNavigator
-              onChapterSelect={handleChapterSelect}
-              currentChapter={currentChapter}
-              currentVolume={currentVolume}
-            />
+          <div className="fixed inset-0 z-50 lg:relative lg:z-auto">
+            <div className="lg:hidden fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowChapterNav(false)} />
+            <div className="fixed left-0 top-0 h-full w-80 bg-card border-r border-border lg:relative lg:translate-x-0 transform transition-transform duration-300 ease-in-out lg:transform-none">
+              <div className="flex items-center justify-between p-4 border-b border-border lg:hidden">
+                <h3 className="text-lg font-semibold">Capítulos</h3>
+                <button onClick={() => setShowChapterNav(false)} className="p-2">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <ChapterNavigator
+                onChapterSelect={handleChapterSelect}
+                currentChapter={currentChapter}
+                currentVolume={currentVolume}
+              />
+            </div>
           </div>
         )}
 
         {/* Main Editor */}
-        <div className="flex-1 flex flex-col mr-80">
+        <div className="flex-1 flex flex-col lg:mr-80">
           {isPreview ? (
-            <div className="flex-1 p-6 overflow-auto">
+            <div className="flex-1 p-4 sm:p-6 overflow-auto">
               <div 
-                className="prose prose-lg max-w-none"
+                className="prose prose-sm sm:prose-lg max-w-none"
                 dangerouslySetInnerHTML={{ __html: editorContent }}
               />
             </div>
@@ -719,26 +571,34 @@ const Editor = () => {
           )}
         </div>
 
-        {/* Sidebar */}
-        {true && (
-          <div className="w-80 bg-muted border-l border-border overflow-y-auto">
-            <div className="p-4 space-y-6">
-              {/* Progress Summary */}
-              <ProgressSummary />
-              {/* AI Helper */}
-              {showAIHelper && (
+        {/* Sidebar - Mobile: Bottom Sheet, Desktop: Sidebar */}
+        {showAIHelper && (
+          <div className="fixed inset-0 z-50 lg:relative lg:z-auto">
+            <div className="lg:hidden fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowAIHelper(false)} />
+            <div className="fixed bottom-0 left-0 right-0 h-96 bg-card border-t border-border rounded-t-lg lg:relative lg:bottom-auto lg:left-auto lg:right-auto lg:h-auto lg:w-80 lg:border-t-0 lg:border-l lg:rounded-t-none transform transition-transform duration-300 ease-in-out lg:transform-none">
+              <div className="flex items-center justify-between p-4 border-b border-border lg:hidden">
+                <h3 className="text-lg font-semibold">Assistente IA</h3>
+                <button onClick={() => setShowAIHelper(false)} className="p-2">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="p-4 space-y-4 lg:space-y-6 overflow-y-auto h-full">
+                {/* Progress Summary */}
+                <ProgressSummary />
+                
+                {/* AI Helper */}
                 <div className="card">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-                    <Sparkles className="h-5 w-5 mr-2 text-purple-600" />
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                    <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-purple-600" />
                     Assistente IA
                   </h3>
                   
                   {selectedText && (
                     <div className="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <p className="text-sm text-blue-800">
+                      <p className="text-xs sm:text-sm text-blue-800">
                         <strong>Texto selecionado:</strong>
                       </p>
-                      <p className="text-sm text-blue-700 mt-1 italic">
+                      <p className="text-xs sm:text-sm text-blue-700 mt-1 italic">
                         "{selectedText.substring(0, 100)}{selectedText.length > 100 ? '...' : ''}"
                       </p>
                     </div>
@@ -758,7 +618,7 @@ const Editor = () => {
                         key={option.key}
                         onClick={() => generateWithAI(option.key)}
                         disabled={isGenerating}
-                        className="w-full text-left p-3 text-sm hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full text-left p-2 sm:p-3 text-xs sm:text-sm hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <div className="font-medium text-gray-900">{option.label}</div>
                         <div className="text-xs text-gray-500 mt-1">{option.desc}</div>
@@ -770,7 +630,7 @@ const Editor = () => {
                     <div className="mt-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
                       <div className="flex items-center text-purple-700">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-700 mr-2"></div>
-                        <span className="text-sm">Gerando texto com IA...</span>
+                        <span className="text-xs sm:text-sm">Gerando texto com IA...</span>
                       </div>
                     </div>
                   )}
@@ -778,7 +638,7 @@ const Editor = () => {
                   <div className="mt-4 pt-3 border-t border-gray-200">
                     <textarea
                       placeholder="Ou escreva um prompt personalizado..."
-                      className="w-full p-2 text-sm border border-gray-300 rounded-lg resize-none"
+                      className="w-full p-2 text-xs sm:text-sm border border-gray-300 rounded-lg resize-none"
                       rows={3}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && e.ctrlKey && e.target.value.trim()) {
@@ -790,128 +650,135 @@ const Editor = () => {
                     <p className="text-xs text-gray-500 mt-1">Ctrl + Enter para enviar</p>
                   </div>
                 </div>
-              )}
 
-              {/* Characters */}
-              {characters.length > 0 && (
+                {/* Characters */}
+                {characters.length > 0 && (
+                  <div className="card">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3">
+                      Personagens
+                    </h3>
+                    <div className="space-y-2">
+                      {characters.slice(0, 5).map((character) => (
+                        <button
+                          key={character.id}
+                          onClick={() => insertCharacter(character)}
+                          className="w-full text-left p-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                        >
+                          {character.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Locations */}
+                {worldData.locations.length > 0 && (
+                  <div className="card">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3">
+                      Locais
+                    </h3>
+                    <div className="space-y-2">
+                      {worldData.locations.slice(0, 5).map((location) => (
+                        <button
+                          key={location.id}
+                          onClick={() => insertLocation(location)}
+                          className="w-full text-left p-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                        >
+                          {location.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Export Options */}
                 <div className="card">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                    Personagens
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3">
+                    Exportar
                   </h3>
                   <div className="space-y-2">
-                    {characters.slice(0, 5).map((character) => (
-                      <button
-                        key={character.id}
-                        onClick={() => insertCharacter(character)}
-                        className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors"
-                      >
-                        {character.name}
-                      </button>
-                    ))}
+                    <button
+                      onClick={exportAsText}
+                      className="w-full btn-outline flex items-center justify-center text-xs sm:text-sm"
+                    >
+                      <Download className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Como Texto (.txt)</span>
+                      <span className="sm:hidden">Texto</span>
+                    </button>
+                    <button
+                      onClick={exportAsHTML}
+                      className="w-full btn-outline flex items-center justify-center text-xs sm:text-sm"
+                    >
+                      <Download className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Como HTML (.html)</span>
+                      <span className="sm:hidden">HTML</span>
+                    </button>
+                    <button
+                      onClick={handleExportWord}
+                      className="w-full btn-outline flex items-center justify-center text-xs sm:text-sm"
+                    >
+                      <Download className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Como Word (.doc)</span>
+                      <span className="sm:hidden">Word</span>
+                    </button>
+                    <button
+                      onClick={handleExportPDF}
+                      className="w-full btn-outline flex items-center justify-center text-xs sm:text-sm"
+                    >
+                      <Download className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Como PDF (.html)</span>
+                      <span className="sm:hidden">PDF</span>
+                    </button>
+                    <button
+                      onClick={handleExportEPUB}
+                      className="w-full btn-outline flex items-center justify-center text-xs sm:text-sm"
+                    >
+                      <Download className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Como EPUB (.json)</span>
+                      <span className="sm:hidden">EPUB</span>
+                    </button>
+                    <div className="border-t border-gray-200 my-2"></div>
+                    <button
+                      onClick={handleExportStatistics}
+                      className="w-full btn-outline flex items-center justify-center text-xs sm:text-sm"
+                    >
+                      <Download className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Estatísticas</span>
+                      <span className="sm:hidden">Stats</span>
+                    </button>
+                    <button
+                      onClick={handleExportBackup}
+                      className="w-full btn-outline flex items-center justify-center text-xs sm:text-sm"
+                    >
+                      <Download className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Backup Completo</span>
+                      <span className="sm:hidden">Backup</span>
+                    </button>
                   </div>
                 </div>
-              )}
 
-              {/* Locations */}
-              {worldData.locations.length > 0 && (
+                {/* Statistics */}
                 <div className="card">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                    Locais
-                  </h3>
-                  <div className="space-y-2">
-                    {worldData.locations.slice(0, 5).map((location) => (
-                      <button
-                        key={location.id}
-                        onClick={() => insertLocation(location)}
-                        className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors"
-                      >
-                        {location.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Export Options */}
-              <div className="card">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                  Exportar
-                </h3>
-                <div className="space-y-2">
-                  <button
-                    onClick={exportAsText}
-                    className="w-full btn-outline flex items-center justify-center"
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Como Texto (.txt)
-                  </button>
-                  <button
-                    onClick={exportAsHTML}
-                    className="w-full btn-outline flex items-center justify-center"
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Como HTML (.html)
-                  </button>
-                  <button
-                    onClick={handleExportWord}
-                    className="w-full btn-outline flex items-center justify-center"
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Como Word (.doc)
-                  </button>
-                  <button
-                    onClick={handleExportPDF}
-                    className="w-full btn-outline flex items-center justify-center"
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Como PDF (.html)
-                  </button>
-                  <button
-                    onClick={handleExportEPUB}
-                    className="w-full btn-outline flex items-center justify-center"
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Como EPUB (.json)
-                  </button>
-                  <div className="border-t border-gray-200 my-2"></div>
-                  <button
-                    onClick={handleExportStatistics}
-                    className="w-full btn-outline flex items-center justify-center"
-                  >
-                    <Download className="mr-2 h-4 w-4" />
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3">
                     Estatísticas
-                  </button>
-                  <button
-                    onClick={handleExportBackup}
-                    className="w-full btn-outline flex items-center justify-center"
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Backup Completo
-                  </button>
-                </div>
-              </div>
-
-              {/* Statistics */}
-              <div className="card">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                  Estatísticas
-                </h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Palavras:</span>
-                    <span className="font-medium">{wordCount.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Caracteres:</span>
-                    <span className="font-medium">{charCount.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Tempo de leitura:</span>
-                    <span className="font-medium">{readingTime} min</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Parágrafos:</span>
-                    <span className="font-medium">{statistics.paragraphCount}</span>
+                  </h3>
+                  <div className="space-y-2 text-xs sm:text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Palavras:</span>
+                      <span className="font-medium">{wordCount.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Caracteres:</span>
+                      <span className="font-medium">{charCount.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Tempo de leitura:</span>
+                      <span className="font-medium">{readingTime} min</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Parágrafos:</span>
+                      <span className="font-medium">{statistics.paragraphCount}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -934,18 +801,18 @@ const Editor = () => {
 
       {/* Modal de Analytics Avançados */}
       {showAnalytics && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-card rounded-lg shadow-xl w-full max-w-6xl h-[90vh] overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b border-border">
-              <h2 className="text-xl font-semibold text-foreground">Analytics Avançados</h2>
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-border">
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground">Analytics Avançados</h2>
               <button
                 onClick={() => setShowAnalytics(false)}
                 className="text-muted-foreground hover:text-foreground"
               >
-                <X className="h-6 w-6" />
+                <X className="h-5 w-5 sm:h-6 sm:w-6" />
               </button>
             </div>
-            <div className="p-6 overflow-y-auto h-full">
+            <div className="p-4 sm:p-6 overflow-y-auto h-full">
               <AdvancedAnalytics 
                 content={editorContent.replace(/<[^>]*>/g, '')}
                 projectData={{
@@ -982,18 +849,18 @@ const Editor = () => {
 
       {/* Modal de Controle de Versões */}
       {showVersionControl && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-card rounded-lg shadow-xl w-full max-w-4xl h-[90vh] overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b border-border">
-              <h2 className="text-xl font-semibold text-foreground">Controle de Versões</h2>
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-border">
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground">Controle de Versões</h2>
               <button
                 onClick={() => setShowVersionControl(false)}
                 className="text-muted-foreground hover:text-foreground"
               >
-                <X className="h-6 w-6" />
+                <X className="h-5 w-5 sm:h-6 sm:w-6" />
               </button>
             </div>
-            <div className="p-6 overflow-y-auto h-full">
+            <div className="p-4 sm:p-6 overflow-y-auto h-full">
               <VersionControlPanel 
                 content={editorContent.replace(/<[^>]*>/g, '')}
                 onContentUpdate={(newContent) => {

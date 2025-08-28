@@ -1,0 +1,631 @@
+/* Responsive Design Utilities */
+
+/* Mobile-first responsive breakpoints */
+@media (max-width: 640px) {
+  /* Mobile specific styles */
+  .mobile-container {
+    @apply px-4;
+  }
+  
+  .mobile-text-sm {
+    @apply text-xs;
+  }
+  
+  .mobile-text-base {
+    @apply text-sm;
+  }
+  
+  .mobile-text-lg {
+    @apply text-base;
+  }
+  
+  .mobile-text-xl {
+    @apply text-lg;
+  }
+  
+  .mobile-text-2xl {
+    @apply text-xl;
+  }
+  
+  .mobile-text-3xl {
+    @apply text-2xl;
+  }
+  
+  .mobile-padding {
+    @apply p-4;
+  }
+  
+  .mobile-margin {
+    @apply m-4;
+  }
+  
+  .mobile-gap {
+    @apply gap-3;
+  }
+  
+  .mobile-space-y {
+    @apply space-y-3;
+  }
+  
+  .mobile-space-x {
+    @apply space-x-3;
+  }
+}
+
+/* Tablet breakpoint */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .tablet-container {
+    @apply px-6;
+  }
+  
+  .tablet-text-sm {
+    @apply text-sm;
+  }
+  
+  .tablet-text-base {
+    @apply text-base;
+  }
+  
+  .tablet-text-lg {
+    @apply text-lg;
+  }
+  
+  .tablet-text-xl {
+    @apply text-xl;
+  }
+  
+  .tablet-text-2xl {
+    @apply text-2xl;
+  }
+  
+  .tablet-text-3xl {
+    @apply text-3xl;
+  }
+  
+  .tablet-padding {
+    @apply p-6;
+  }
+  
+  .tablet-margin {
+    @apply m-6;
+  }
+  
+  .tablet-gap {
+    @apply gap-4;
+  }
+  
+  .tablet-space-y {
+    @apply space-y-4;
+  }
+  
+  .tablet-space-x {
+    @apply space-x-4;
+  }
+}
+
+/* Desktop breakpoint */
+@media (min-width: 1025px) {
+  .desktop-container {
+    @apply px-8;
+  }
+  
+  .desktop-text-sm {
+    @apply text-sm;
+  }
+  
+  .desktop-text-base {
+    @apply text-base;
+  }
+  
+  .desktop-text-lg {
+    @apply text-lg;
+  }
+  
+  .desktop-text-xl {
+    @apply text-xl;
+  }
+  
+  .desktop-text-2xl {
+    @apply text-2xl;
+  }
+  
+  .desktop-text-3xl {
+    @apply text-3xl;
+  }
+  
+  .desktop-padding {
+    @apply p-8;
+  }
+  
+  .desktop-margin {
+    @apply m-8;
+  }
+  
+  .desktop-gap {
+    @apply gap-6;
+  }
+  
+  .desktop-space-y {
+    @apply space-y-6;
+  }
+  
+  .desktop-space-x {
+    @apply space-x-6;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  /* Increase touch targets */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  /* Improve touch feedback */
+  .touch-feedback {
+    @apply active:scale-95 transition-transform;
+  }
+  
+  /* Better scrolling on touch devices */
+  .touch-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Prevent text selection on buttons */
+  .touch-button {
+    @apply select-none;
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .retina-image {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+}
+
+/* Landscape mobile optimization */
+@media (max-width: 640px) and (orientation: landscape) {
+  .landscape-mobile {
+    @apply max-h-screen overflow-y-auto;
+  }
+  
+  .landscape-header {
+    @apply h-12;
+  }
+  
+  .landscape-content {
+    @apply max-h-[calc(100vh-3rem)];
+  }
+}
+
+/* Print styles */
+@media print {
+  .print-hidden {
+    @apply hidden;
+  }
+  
+  .print-visible {
+    @apply block;
+  }
+  
+  .print-break-before {
+    page-break-before: always;
+  }
+  
+  .print-break-after {
+    page-break-after: always;
+  }
+  
+  .print-no-break {
+    page-break-inside: avoid;
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .motion-safe {
+    @apply transition-none;
+  }
+  
+  .motion-safe * {
+    @apply animate-none;
+  }
+}
+
+/* Dark mode preferences */
+@media (prefers-color-scheme: dark) {
+  .auto-dark {
+    @apply dark;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .high-contrast {
+    @apply border-2;
+  }
+  
+  .high-contrast-text {
+    @apply font-bold;
+  }
+}
+
+/* Focus visible for better accessibility */
+.focus-visible:focus {
+  @apply outline-none ring-2 ring-blue-500 ring-offset-2;
+}
+
+/* Custom scrollbar for webkit browsers */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-gray-200 rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-gray-400 rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-600;
+}
+
+/* Responsive grid systems */
+.responsive-grid-1 {
+  @apply grid grid-cols-1;
+}
+
+.responsive-grid-2 {
+  @apply grid grid-cols-1 sm:grid-cols-2;
+}
+
+.responsive-grid-3 {
+  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3;
+}
+
+.responsive-grid-4 {
+  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4;
+}
+
+.responsive-grid-auto {
+  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+}
+
+/* Responsive flex utilities */
+.responsive-flex-col {
+  @apply flex flex-col;
+}
+
+.responsive-flex-row {
+  @apply flex flex-col sm:flex-row;
+}
+
+.responsive-flex-wrap {
+  @apply flex flex-wrap;
+}
+
+.responsive-flex-nowrap {
+  @apply flex flex-nowrap;
+}
+
+/* Responsive spacing utilities */
+.responsive-gap-2 {
+  @apply gap-2 sm:gap-3 lg:gap-4;
+}
+
+.responsive-gap-4 {
+  @apply gap-3 sm:gap-4 lg:gap-6;
+}
+
+.responsive-gap-6 {
+  @apply gap-4 sm:gap-6 lg:gap-8;
+}
+
+.responsive-p-4 {
+  @apply p-3 sm:p-4 lg:p-6;
+}
+
+.responsive-p-6 {
+  @apply p-4 sm:p-6 lg:p-8;
+}
+
+.responsive-p-8 {
+  @apply p-6 sm:p-8 lg:p-12;
+}
+
+/* Responsive text utilities */
+.responsive-text-xs {
+  @apply text-xs sm:text-sm;
+}
+
+.responsive-text-sm {
+  @apply text-sm sm:text-base;
+}
+
+.responsive-text-base {
+  @apply text-base sm:text-lg;
+}
+
+.responsive-text-lg {
+  @apply text-lg sm:text-xl;
+}
+
+.responsive-text-xl {
+  @apply text-xl sm:text-2xl;
+}
+
+.responsive-text-2xl {
+  @apply text-2xl sm:text-3xl;
+}
+
+.responsive-text-3xl {
+  @apply text-3xl sm:text-4xl;
+}
+
+/* Responsive visibility utilities */
+.responsive-hidden-mobile {
+  @apply hidden sm:block;
+}
+
+.responsive-hidden-tablet {
+  @apply block lg:hidden;
+}
+
+.responsive-hidden-desktop {
+  @apply block xl:hidden;
+}
+
+/* Responsive container utilities */
+.responsive-container-sm {
+  @apply max-w-sm mx-auto px-4;
+}
+
+.responsive-container-md {
+  @apply max-w-md mx-auto px-4 sm:px-6;
+}
+
+.responsive-container-lg {
+  @apply max-w-lg mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+.responsive-container-xl {
+  @apply max-w-xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+.responsive-container-2xl {
+  @apply max-w-2xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+.responsive-container-full {
+  @apply max-w-full mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+/* Responsive aspect ratios */
+.responsive-aspect-square {
+  @apply aspect-square;
+}
+
+.responsive-aspect-video {
+  @apply aspect-video;
+}
+
+.responsive-aspect-photo {
+  @apply aspect-[4/3];
+}
+
+/* Responsive shadows */
+.responsive-shadow-sm {
+  @apply shadow-sm sm:shadow-md;
+}
+
+.responsive-shadow-md {
+  @apply shadow-md sm:shadow-lg;
+}
+
+.responsive-shadow-lg {
+  @apply shadow-lg sm:shadow-xl;
+}
+
+/* Responsive borders */
+.responsive-border {
+  @apply border sm:border-2;
+}
+
+.responsive-border-t {
+  @apply border-t sm:border-t-2;
+}
+
+.responsive-border-b {
+  @apply border-b sm:border-b-2;
+}
+
+.responsive-border-l {
+  @apply border-l sm:border-l-2;
+}
+
+.responsive-border-r {
+  @apply border-r sm:border-r-2;
+}
+
+/* Responsive rounded corners */
+.responsive-rounded {
+  @apply rounded sm:rounded-md;
+}
+
+.responsive-rounded-md {
+  @apply rounded-md sm:rounded-lg;
+}
+
+.responsive-rounded-lg {
+  @apply rounded-lg sm:rounded-xl;
+}
+
+.responsive-rounded-xl {
+  @apply rounded-xl sm:rounded-2xl;
+}
+
+/* Responsive animations */
+.responsive-animate-in {
+  @apply opacity-0;
+  animation: fadeIn 0.3s ease-in-out forwards;
+}
+
+.responsive-animate-out {
+  @apply opacity-100;
+  animation: fadeOut 0.3s ease-in-out forwards;
+}
+
+.responsive-slide-in {
+  @apply opacity-0 transform translate-y-4;
+  animation: slideIn 0.3s ease-in-out forwards;
+}
+
+.responsive-slide-out {
+  @apply opacity-100 transform translate-y-0;
+  animation: slideOut 0.3s ease-in-out forwards;
+}
+
+/* Custom animation keyframes */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slideIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(1rem); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes slideOut {
+  from { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+  to { 
+    opacity: 0; 
+    transform: translateY(1rem); 
+  }
+}
+
+/* Responsive transitions */
+.responsive-transition {
+  @apply transition-all duration-200 ease-in-out;
+}
+
+.responsive-transition-fast {
+  @apply transition-all duration-150 ease-in-out;
+}
+
+.responsive-transition-slow {
+  @apply transition-all duration-300 ease-in-out;
+}
+
+/* Responsive hover effects */
+.responsive-hover {
+  @apply hover:scale-105 hover:shadow-lg transition-all duration-200;
+}
+
+.responsive-hover-lift {
+  @apply hover:-translate-y-1 hover:shadow-lg transition-all duration-200;
+}
+
+.responsive-hover-glow {
+  @apply hover:shadow-lg transition-all duration-200;
+}
+
+/* Responsive focus states */
+.responsive-focus {
+  @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+}
+
+.responsive-focus-visible {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2;
+}
+
+/* Responsive active states */
+.responsive-active {
+  @apply active:scale-95 active:shadow-inner transition-all duration-150;
+}
+
+/* Responsive disabled states */
+.responsive-disabled {
+  @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none;
+}
+
+/* Responsive loading states */
+.responsive-loading {
+  @apply animate-pulse;
+}
+
+.responsive-spinner {
+  @apply animate-spin;
+}
+
+/* Responsive skeleton loading */
+.responsive-skeleton {
+  @apply animate-pulse bg-gray-200 rounded;
+}
+
+.responsive-skeleton-text {
+  @apply animate-pulse bg-gray-200 rounded h-4;
+}
+
+.responsive-skeleton-avatar {
+  @apply animate-pulse bg-gray-200 rounded-full;
+}
+
+.responsive-skeleton-button {
+  @apply animate-pulse bg-gray-200 rounded h-10;
+}
+
+/* Responsive error states */
+.responsive-error {
+  @apply border-red-500 text-red-600;
+}
+
+.responsive-error-focus {
+  @apply focus:border-red-500 focus:ring-red-500;
+}
+
+/* Responsive success states */
+.responsive-success {
+  @apply border-green-500 text-green-600;
+}
+
+.responsive-success-focus {
+  @apply focus:border-green-500 focus:ring-green-500;
+}
+
+/* Responsive warning states */
+.responsive-warning {
+  @apply border-yellow-500 text-yellow-600;
+}
+
+.responsive-warning-focus {
+  @apply focus:border-yellow-500 focus:ring-yellow-500;
+}
+
+/* Responsive info states */
+.responsive-info {
+  @apply border-blue-500 text-blue-600;
+}
+
+.responsive-info-focus {
+  @apply focus:border-blue-500 focus:ring-blue-500;
+}
