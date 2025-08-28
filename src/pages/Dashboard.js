@@ -20,6 +20,7 @@ import ConsistencyChecker from '../components/editor/ConsistencyChecker';
 import NovelReader from '../components/editor/NovelReader';
 import LightNovelPDFExporter from '../components/editor/LightNovelPDFExporter';
 import PDFExporterTest from '../components/editor/PDFExporterTest';
+import AIInsightsCard from '../components/AI/AIInsightsCard';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -318,6 +319,22 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* AI Agent Insights */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <AIInsightsCard />
+        
+        {/* Tips */}
+        <div className="card bg-gradient-to-r from-primary-100/50 to-secondary-100/50 dark:from-primary-900/20 dark:to-secondary-900/20 border-primary-200 dark:border-primary-800">
+          <h3 className="text-lg font-semibold text-foreground mb-2">
+            💡 Dica do Dia
+          </h3>
+          <p className="text-foreground">
+            Use o Assistente AI para gerar ideias quando estiver com bloqueio criativo. 
+            Ele pode ajudar com desenvolvimento de personagens, enredos e descrições de cenários.
+          </p>
+        </div>
+      </div>
+
       {/* Recent Projects */}
       {recentProjects.length > 0 && (
         <div className="card">
@@ -384,16 +401,7 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Tips */}
-      <div className="card bg-gradient-to-r from-primary-100/50 to-secondary-100/50 dark:from-primary-900/20 dark:to-secondary-900/20 border-primary-200 dark:border-primary-800">
-        <h3 className="text-lg font-semibold text-foreground mb-2">
-          💡 Dica do Dia
-        </h3>
-        <p className="text-foreground">
-          Use o Assistente AI para gerar ideias quando estiver com bloqueio criativo. 
-          Ele pode ajudar com desenvolvimento de personagens, enredos e descrições de cenários.
-        </p>
-      </div>
+
 
       {/* Modal de Verificador de Consistência */}
       {showConsistencyChecker && (

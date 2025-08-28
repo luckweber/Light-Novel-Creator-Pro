@@ -19,7 +19,8 @@ import {
   Settings,
   Zap,
   CheckCircle,
-  GitBranch
+  GitBranch,
+  Brain
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import useNotifications from '../hooks/useNotifications';
@@ -38,6 +39,8 @@ import NovelReader from '../components/editor/NovelReader';
 import LightNovelPDFExporter from '../components/editor/LightNovelPDFExporter';
 import VersionControlPanel from '../components/editor/VersionControlPanel';
 import VersionNotification from '../components/editor/VersionNotification';
+import AIAgent from '../components/AI/AIAgent';
+import { useAIAgent } from '../hooks/useAIAgent';
 
 const Editor = () => {
   const { 
@@ -58,6 +61,19 @@ const Editor = () => {
 
   const { checkWritingProgress, checkWritingSession } = useNotifications();
   const { createManualVersion, getVersionStats } = useVersionControl(editorContent);
+
+  // Agente de IA
+  const aiProvider = settings?.aiProvider || 'openai';
+  const {
+    isAgentOpen,
+    setIsAgentOpen,
+    isAnalyzing,
+    generateWithContext,
+    analyzeProject,
+    generateElementPrompt,
+    getQualityTips,
+    getVolumeInsights
+  } = useAIAgent(aiProvider);
 
   const [isPreview, setIsPreview] = useState(false);
   const [wordCount, setWordCount] = useState(0);
@@ -380,6 +396,15 @@ const Editor = () => {
               <GitBranch className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Versões</span>
               <span className="sm:hidden">Versões</span>
+            </button>
+            
+            <button
+              onClick={() => setIsAgentOpen(true)}
+              className="btn-secondary flex items-center bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-sm"
+            >
+              <Brain className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Agente IA</span>
+              <span className="sm:hidden">Agente</span>
             </button>
             
             <button
@@ -872,6 +897,20 @@ const Editor = () => {
           </div>
         </div>
       )}
+
+      {/* Agente de IA */}
+      <AIAgent
+        worldData={worldData}
+        projectData={{ 
+          volumes: projectStructure.volumes, 
+          chapters: projectStructure.chapters, 
+          characters 
+        }}
+        onGenerateWithContext={generateWithContext}
+        onGetInsights={analyzeProject}
+        isOpen={isAgentOpen}
+        onClose={() => setIsAgentOpen(false)}
+      />
 
       {/* Notificação de Versão */}
       <VersionNotification content={editorContent} />

@@ -34,7 +34,8 @@ import {
   Book,
   FileText,
   BarChart3,
-  Share2
+  Share2,
+  Brain
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import { AIService, getBestModelForTask } from '../utils/aiProviders';
@@ -61,6 +62,8 @@ import ResourceFormModal from '../components/world_builder/ResourceFormModal';
 import TechnologyFormModal from '../components/world_builder/TechnologyFormModal';
 import GovernmentFormModal from '../components/world_builder/GovernmentFormModal';
 import SideMenu from '../components/world_builder/SideMenu';
+import AIAgent from '../components/AI/AIAgent';
+import { useAIAgent } from '../hooks/useAIAgent';
 
 const WorldBuilder = () => {
   const { 
@@ -71,7 +74,9 @@ const WorldBuilder = () => {
     characters,
     addWorldItem,
     updateWorldItem,
-    deleteWorldItem
+    deleteWorldItem,
+    volumes,
+    chapters
   } = useStore();
 
   // Estados principais
@@ -81,6 +86,19 @@ const WorldBuilder = () => {
   const [formType, setFormType] = useState(null); // 'location', 'people', etc.
   const [editingItem, setEditingItem] = useState(null);
   
+  // Agente de IA
+  const aiProvider = settings?.aiProvider || 'openai';
+  const {
+    isAgentOpen,
+    setIsAgentOpen,
+    isAnalyzing,
+    generateWithContext,
+    analyzeProject,
+    generateElementPrompt,
+    getQualityTips,
+    getVolumeInsights
+  } = useAIAgent(aiProvider);
+  
   // Estados de filtro e busca
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
@@ -89,7 +107,6 @@ const WorldBuilder = () => {
   
   // Estados de IA e geração
   const [isGenerating, setIsGenerating] = useState(false);
-  const [aiProvider, setAiProvider] = useState('');
   const [generationProgress, setGenerationProgress] = useState(0);
   const [batchGeneration, setBatchGeneration] = useState(false);
   
@@ -118,13 +135,9 @@ const WorldBuilder = () => {
   }, [getSubTabs, activeSubTab]);
 
   // Inicialização do provedor de IA
+  // Configurar provedor de IA padrão
   useEffect(() => {
-    const availableProviders = Object.keys(settings?.aiProviders || {})
-      .filter(key => settings.aiProviders[key]?.enabled && settings.aiProviders[key]?.apiKey);
-    
-    if (availableProviders.length > 0) {
-      setAiProvider(availableProviders[0]);
-    }
+    // O aiProvider agora é derivado de settings, não precisa de setter
   }, [settings]);
 
   // Função para obter serviço de IA
@@ -224,6 +237,9 @@ const WorldBuilder = () => {
 
   // Função para gerar local com IA
   const generateLocation = useCallback(async (type = 'random') => {
+    // Gera prompt contextualizado usando o agente
+    const contextualPrompt = await generateElementPrompt('location', 'local', worldData);
+    
     const prompts = {
       random: `Crie um local único e interessante para uma light novel.
 
@@ -328,13 +344,17 @@ Formato exato:
 }`
     };
 
+    // Combina o prompt contextualizado com o prompt específico
+    const basePrompt = prompts[type] || prompts.random;
+    const finalPrompt = contextualPrompt ? `${contextualPrompt}\n\n${basePrompt}` : basePrompt;
+
     const context = {
       worldName: worldData?.name || 'Mundo da Light Novel',
       existingElements: worldData?.locations || [],
       characters: characters?.slice(0, 3) || []
     };
 
-    const result = await generateWithAI('location', prompts[type] || prompts.random, context);
+    const result = await generateWithAI('location', finalPrompt, context);
     
     if (result) {
       try {
@@ -389,7 +409,7 @@ Formato exato:
     }
     
     return null;
-  }, [generateWithAI, cleanAIResponse, worldData, characters, aiProvider]);
+  }, [generateWithAI, cleanAIResponse, worldData, characters, aiProvider, generateElementPrompt]);
 
   // Função para gerar povo com IA (conectada aos botões)
   const generatePeople = useCallback(async () => {
@@ -3949,6 +3969,14 @@ Formato exato:
                 
                 <div className="flex items-center space-x-2 sm:space-x-4">
                   <button
+                    onClick={() => setIsAgentOpen(true)}
+                    className="btn-primary flex items-center text-sm bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  >
+                    <Brain className="h-4 w-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Agente IA</span>
+                  </button>
+                  
+                  <button
                     onClick={() => setShowStats(!showStats)}
                     className="btn-ghost p-2"
                   >
@@ -4159,6 +4187,16 @@ Formato exato:
           onGenerateWithAI={generateWithAI}
         />
       )}
+
+      {/* Agente de IA */}
+      <AIAgent
+        worldData={worldData}
+        projectData={{ volumes, chapters, characters }}
+        onGenerateWithContext={generateWithContext}
+        onGetInsights={analyzeProject}
+        isOpen={isAgentOpen}
+        onClose={() => setIsAgentOpen(false)}
+      />
 
       <ToastContainer />
     </div>
