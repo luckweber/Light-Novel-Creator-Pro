@@ -31,7 +31,10 @@ import {
   Heart,
   Coins,
   Calendar,
-  Book
+  Book,
+  FileText,
+  BarChart3,
+  Share2
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import { AIService, getBestModelForTask } from '../utils/aiProviders';
@@ -42,6 +45,7 @@ import 'reactflow/dist/style.css';
 import { 
   mainTabs, 
   locationTypes,
+  subMenus
 } from '../data/worldBuilderConstants';
 import EconomyFormModal from '../components/world_builder/EconomyFormModal';
 import LocationFormModal from '../components/world_builder/LocationFormModal';
@@ -56,6 +60,7 @@ import TraditionFormModal from '../components/world_builder/TraditionFormModal';
 import ResourceFormModal from '../components/world_builder/ResourceFormModal';
 import TechnologyFormModal from '../components/world_builder/TechnologyFormModal';
 import GovernmentFormModal from '../components/world_builder/GovernmentFormModal';
+import SideMenu from '../components/world_builder/SideMenu';
 
 const WorldBuilder = () => {
   const { 
@@ -71,7 +76,7 @@ const WorldBuilder = () => {
 
   // Estados principais
   const [activeTab, setActiveTab] = useState('overview');
-  const [activeSubTab, setActiveSubTab] = useState('locations');
+  const [activeSubTab, setActiveSubTab] = useState('');
   const [viewMode, setViewMode] = useState('grid');
   const [formType, setFormType] = useState(null); // 'location', 'people', etc.
   const [editingItem, setEditingItem] = useState(null);
@@ -92,35 +97,25 @@ const WorldBuilder = () => {
   const [showStats, setShowStats] = useState(true);
   const [expandedCards, setExpandedCards] = useState({});
 
-  // Subabas para Geografia
-  const geographyTabs = useMemo(() => [
-    { id: 'locations', label: 'Locais', icon: MapPin, count: worldData?.locations?.length || 0 },
-    { id: 'regions', label: 'Regiões', icon: Layers, count: worldData?.regions?.length || 0 },
-    { id: 'landmarks', label: 'Marcos', icon: Navigation, count: worldData?.landmarks?.length || 0 },
-    { id: 'resources', label: 'Recursos', icon: Gem, count: worldData?.resources?.length || 0 }
-  ], [worldData]);
+  // Função para obter subabas dinamicamente
+  const getSubTabs = useCallback((tabId) => {
+    const subMenu = subMenus[tabId];
+    if (!subMenu) return [];
+    
+    return subMenu.items.map(item => ({
+      ...item,
+      count: worldData?.[item.id]?.length || 0
+    }));
+  }, [worldData]);
 
-  // Subabas para Culturas
-  const cultureTabs = useMemo(() => [
-    { id: 'peoples', label: 'Povos', icon: Users, count: worldData?.peoples?.length || 0 },
-    { id: 'languages', label: 'Idiomas', icon: BookOpen, count: worldData?.languages?.length || 0 },
-    { id: 'religions', label: 'Religiões', icon: Star, count: worldData?.religions?.length || 0 },
-    { id: 'traditions', label: 'Tradições', icon: Heart, count: worldData?.traditions?.length || 0 }
-  ], [worldData]);
-
-  // Subabas para Sistemas
-  const systemTabs = useMemo(() => [
-    { id: 'magicSystems', label: 'Magia', icon: Sparkles, count: worldData?.magicSystems?.length || 0 },
-    { id: 'technologies', label: 'Tecnologia', icon: Zap, count: worldData?.technologies?.length || 0 },
-    { id: 'governments', label: 'Política', icon: Crown, count: worldData?.governments?.length || 0 },
-    { id: 'economies', label: 'Economia', icon: Coins, count: worldData?.economies?.length || 0 }
-  ], [worldData]);
-
-  // Subabas para História (usado na renderização)
-  const historyTabs = useMemo(() => [
-    { id: 'events', label: 'Eventos', icon: Calendar, count: worldData?.events?.length || 0 },
-    { id: 'eras', label: 'Eras', icon: Book, count: worldData?.eras?.length || 0 }
-  ], [worldData?.events?.length, worldData?.eras?.length]);
+  // Função para definir a primeira subaba automaticamente
+  const setActiveTabWithSubTab = useCallback((tabId) => {
+    setActiveTab(tabId);
+    const subTabs = getSubTabs(tabId);
+    if (subTabs.length > 0 && !subTabs.find(tab => tab.id === activeSubTab)) {
+      setActiveSubTab(subTabs[0].id);
+    }
+  }, [getSubTabs, activeSubTab]);
 
   // Inicialização do provedor de IA
   useEffect(() => {
@@ -1142,128 +1137,91 @@ Formate como JSON:
   );
 
   // Renderizar geografia
-  const renderGeography = () => (
-    <div className="space-y-6 animate-fade-in">
-      {/* Subabas */}
-      <div className="border-b border-border">
-        <nav className="-mb-px flex space-x-8 overflow-x-auto">
-          {geographyTabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveSubTab(tab.id)}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
-                activeSubTab === tab.id
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-              }`}
-            >
-              <tab.icon className="h-4 w-4 mr-2" />
-              {tab.label}
-              {tab.count > 0 && (
-                <span className="ml-2 bg-muted text-muted-foreground py-0.5 px-2 rounded-full text-xs">
-                  {tab.count}
-                </span>
-              )}
-            </button>
-          ))}
-        </nav>
-      </div>
+  const renderGeography = () => {
+    return (
+      <div className="space-y-6 animate-fade-in">
 
-      {/* Controles */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center space-x-4">
-          {/* Busca */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Buscar locais..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-background text-foreground"
-            />
+              {/* Controles */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center space-x-4">
+            {/* Busca */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Buscar locais..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-background text-foreground"
+              />
+            </div>
+
+            {/* Filtro por tipo */}
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-background text-foreground"
+            >
+              <option value="all">Todos os tipos</option>
+              {locationTypes.map((type) => (
+                <option key={type.value} value={type.value}>{type.label}</option>
+              ))}
+            </select>
+
+            {/* Ordenação */}
+            <select
+              value={`${sortBy}-${sortOrder}`}
+              onChange={(e) => {
+                const [field, order] = e.target.value.split('-');
+                setSortBy(field);
+                setSortOrder(order);
+              }}
+              className="border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-background text-foreground"
+            >
+              <option value="name-asc">Nome (A-Z)</option>
+              <option value="name-desc">Nome (Z-A)</option>
+              <option value="type-asc">Tipo (A-Z)</option>
+              <option value="createdAt-desc">Mais recentes</option>
+              <option value="createdAt-asc">Mais antigos</option>
+            </select>
           </div>
 
-          {/* Filtro por tipo */}
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-background text-foreground"
-          >
-            <option value="all">Todos os tipos</option>
-            {locationTypes.map((type) => (
-              <option key={type.value} value={type.value}>{type.label}</option>
-            ))}
-          </select>
-
-          {/* Ordenação */}
-          <select
-            value={`${sortBy}-${sortOrder}`}
-            onChange={(e) => {
-              const [field, order] = e.target.value.split('-');
-              setSortBy(field);
-              setSortOrder(order);
-            }}
-            className="border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-background text-foreground"
-          >
-            <option value="name-asc">Nome (A-Z)</option>
-            <option value="name-desc">Nome (Z-A)</option>
-            <option value="type-asc">Tipo (A-Z)</option>
-            <option value="createdAt-desc">Mais recentes</option>
-            <option value="createdAt-asc">Mais antigos</option>
-          </select>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          {/* Seleção múltipla */}
-          {/* {selectedItems.length > 0 && (
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-600">
-                {selectedItems.length} selecionado(s)
-              </span>
-              <button className="btn-ghost text-red-600">
-                <Trash2 className="h-4 w-4" />
+          <div className="flex items-center space-x-2">
+            {/* Modo de visualização */}
+            <div className="flex items-center border border-border rounded-lg">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 ${viewMode === 'grid' ? 'bg-muted' : ''}`}
+              >
+                <Grid className="h-4 w-4" />
               </button>
-              <button className="btn-ghost">
-                <Copy className="h-4 w-4" />
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 ${viewMode === 'list' ? 'bg-muted' : ''}`}
+              >
+                <List className="h-4 w-4" />
               </button>
             </div>
-          )} */}
 
-          {/* Modo de visualização */}
-          <div className="flex items-center border border-border rounded-lg">
+            {/* Botão adicionar */}
             <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 ${viewMode === 'grid' ? 'bg-muted' : ''}`}
+              onClick={() => setFormType('location')}
+              className="btn-primary flex items-center"
             >
-              <Grid className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-2 ${viewMode === 'list' ? 'bg-muted' : ''}`}
-            >
-              <List className="h-4 w-4" />
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar Local
             </button>
           </div>
-
-          {/* Botão adicionar */}
-          <button
-            onClick={() => setFormType('location')}
-            className="btn-primary flex items-center"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Adicionar Local
-          </button>
         </div>
-      </div>
 
-      {/* Conteúdo */}
-      {activeSubTab === 'locations' && renderLocations()}
-      {activeSubTab === 'regions' && renderRegions()}
-      {activeSubTab === 'landmarks' && renderLandmarks()}
-      {activeSubTab === 'resources' && renderResources()}
-    </div>
-  );
+        {/* Conteúdo */}
+        {activeSubTab === 'locations' && renderLocations()}
+        {activeSubTab === 'regions' && renderRegions()}
+        {activeSubTab === 'landmarks' && renderLandmarks()}
+        {activeSubTab === 'resources' && renderResources()}
+      </div>
+    );
+  };
 
   // Renderizar locais
   const renderLocations = () => {
@@ -1808,32 +1766,9 @@ Formate como JSON:
   };
 
   // Renderizar culturas
-  const renderCultures = () => (
-    <div className="space-y-6 animate-fade-in">
-      {/* Subabas */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8 overflow-x-auto">
-          {cultureTabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveSubTab(tab.id)}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
-                activeSubTab === tab.id
-                  ? 'border-purple-500 text-purple-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <tab.icon className="h-4 w-4 mr-2" />
-              {tab.label}
-              {tab.count > 0 && (
-                <span className="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">
-                  {tab.count}
-                </span>
-              )}
-            </button>
-          ))}
-        </nav>
-      </div>
+  const renderCultures = () => {
+    return (
+      <div className="space-y-6 animate-fade-in">
 
       {/* Controles */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -1923,13 +1858,14 @@ Formate como JSON:
         </div>
       </div>
 
-      {/* Conteúdo */}
-      {activeSubTab === 'peoples' && renderPeoples()}
-      {activeSubTab === 'languages' && renderLanguages()}
-      {activeSubTab === 'religions' && renderReligions()}
-      {activeSubTab === 'traditions' && renderTraditions()}
-    </div>
-  );
+              {/* Conteúdo */}
+        {activeSubTab === 'peoples' && renderPeoples()}
+        {activeSubTab === 'languages' && renderLanguages()}
+        {activeSubTab === 'religions' && renderReligions()}
+        {activeSubTab === 'traditions' && renderTraditions()}
+      </div>
+    );
+  };
   
   // Renderizar povos
   const renderPeoples = () => {
@@ -2349,40 +2285,18 @@ Formate como JSON:
   };
 
   // Renderizar Sistemas
-  const renderSystems = () => (
-    <div className="space-y-6 animate-fade-in">
-      {/* Subabas */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8 overflow-x-auto">
-          {systemTabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveSubTab(tab.id)}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
-                activeSubTab === tab.id
-                  ? 'border-orange-500 text-orange-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <tab.icon className="h-4 w-4 mr-2" />
-              {tab.label}
-              {tab.count > 0 && (
-                <span className="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">
-                  {tab.count}
-                </span>
-              )}
-            </button>
-          ))}
-        </nav>
-      </div>
+  const renderSystems = () => {
+    return (
+      <div className="space-y-6 animate-fade-in">
 
-      {/* Conteúdo */}
-      {activeSubTab === 'magicSystems' && renderMagicSystems()}
-      {activeSubTab === 'technologies' && renderTechnologies()}
-      {activeSubTab === 'governments' && renderGovernments()}
-      {activeSubTab === 'economies' && renderEconomies()}
-    </div>
-  );
+              {/* Conteúdo */}
+        {activeSubTab === 'magicSystems' && renderMagicSystems()}
+        {activeSubTab === 'technologies' && renderTechnologies()}
+        {activeSubTab === 'governments' && renderGovernments()}
+        {activeSubTab === 'economies' && renderEconomies()}
+      </div>
+    );
+  };
 
   // Renderizar Sistemas de Magia
   const renderMagicSystems = () => {
@@ -3061,6 +2975,209 @@ Formate como JSON:
     );
   };
 
+  // Renderizar Analytics
+  const renderAnalytics = () => {
+    return (
+      <div className="space-y-6 animate-fade-in">
+
+        {/* Conteúdo */}
+        {activeSubTab === 'statistics' && renderStatistics()}
+        {activeSubTab === 'insights' && renderInsights()}
+        {activeSubTab === 'reports' && renderReports()}
+      </div>
+    );
+  };
+
+  // Renderizar Estatísticas
+  const renderStatistics = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="card">
+          <div className="flex items-center">
+            <div className="p-3 bg-blue-100 rounded-lg mr-4">
+              <MapPin className="h-6 w-6 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total de Locais</p>
+              <p className="text-2xl font-bold text-gray-900">{worldData?.locations?.length || 0}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="flex items-center">
+            <div className="p-3 bg-purple-100 rounded-lg mr-4">
+              <Users className="h-6 w-6 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Povos Criados</p>
+              <p className="text-2xl font-bold text-gray-900">{worldData?.peoples?.length || 0}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="flex items-center">
+            <div className="p-3 bg-orange-100 rounded-lg mr-4">
+              <Sparkles className="h-6 w-6 text-orange-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Sistemas de Magia</p>
+              <p className="text-2xl font-bold text-gray-900">{worldData?.magicSystems?.length || 0}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="flex items-center">
+            <div className="p-3 bg-red-100 rounded-lg mr-4">
+              <Calendar className="h-6 w-6 text-red-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Eventos Históricos</p>
+              <p className="text-2xl font-bold text-gray-900">{worldData?.events?.length || 0}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="card">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Distribuição por Tipo</h3>
+          <div className="space-y-3">
+            {locationTypes.slice(0, 5).map((type) => {
+              const count = worldData?.locations?.filter(loc => loc.type === type.value).length || 0;
+              const percentage = worldData?.locations?.length > 0 ? (count / worldData.locations.length * 100).toFixed(1) : 0;
+              
+              return (
+                <div key={type.value} className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">{type.label}</span>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-24 bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full" 
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                    <span className="text-sm font-medium text-gray-900">{count}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="card">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Atividade Recente</h3>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Elementos criados esta semana</span>
+              <span className="text-sm font-medium text-gray-900">{worldStats.recentlyAdded}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Média de palavras por local</span>
+              <span className="text-sm font-medium text-gray-900">{worldStats.avgWordsPerLocation}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Total de elementos</span>
+              <span className="text-sm font-medium text-gray-900">{worldStats.totalElements}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Renderizar Insights
+  const renderInsights = () => (
+    <div className="space-y-6">
+      <div className="card">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Insights do Mundo</h3>
+        <div className="space-y-4">
+          <div className="p-4 bg-blue-50 rounded-lg">
+            <h4 className="font-medium text-blue-900 mb-2">🌍 Mundo em Desenvolvimento</h4>
+            <p className="text-blue-700 text-sm">
+              Seu mundo tem {worldStats.totalElements} elementos criados. 
+              {worldStats.totalElements < 10 ? ' Continue expandindo para criar um universo rico!' : ' Excelente trabalho na construção do seu universo!'}
+            </p>
+          </div>
+
+          {worldData?.locations?.length > 0 && (
+            <div className="p-4 bg-green-50 rounded-lg">
+              <h4 className="font-medium text-green-900 mb-2">🗺️ Diversidade Geográfica</h4>
+              <p className="text-green-700 text-sm">
+                Você criou {worldData.locations.length} locais únicos. 
+                Considere adicionar mais regiões e marcos para enriquecer a geografia do seu mundo.
+              </p>
+            </div>
+          )}
+
+          {worldData?.peoples?.length > 0 && (
+            <div className="p-4 bg-purple-50 rounded-lg">
+              <h4 className="font-medium text-purple-900 mb-2">👥 Diversidade Cultural</h4>
+              <p className="text-purple-700 text-sm">
+                {worldData.peoples.length} povos habitam seu mundo. 
+                Explore suas tradições, idiomas e religiões para criar culturas mais profundas.
+              </p>
+            </div>
+          )}
+
+          {worldData?.magicSystems?.length > 0 && (
+            <div className="p-4 bg-orange-50 rounded-lg">
+              <h4 className="font-medium text-orange-900 mb-2">✨ Sistemas Mágicos</h4>
+              <p className="text-orange-700 text-sm">
+                {worldData.magicSystems.length} sistema(s) de magia definido(s). 
+                Considere como a magia afeta a sociedade, economia e política do seu mundo.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Renderizar Relatórios
+  const renderReports = () => (
+    <div className="space-y-6">
+      <div className="card">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Relatórios Disponíveis</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <button className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors text-left">
+            <div className="flex items-center mb-2">
+              <FileText className="h-5 w-5 text-blue-600 mr-2" />
+              <span className="font-medium text-gray-900">Relatório Completo</span>
+            </div>
+            <p className="text-sm text-gray-600">Exporte todos os dados do seu mundo em formato detalhado</p>
+          </button>
+
+          <button className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors text-left">
+            <div className="flex items-center mb-2">
+              <BarChart3 className="h-5 w-5 text-green-600 mr-2" />
+              <span className="font-medium text-gray-900">Análise de Consistência</span>
+            </div>
+            <p className="text-sm text-gray-600">Verifique a consistência entre elementos do mundo</p>
+          </button>
+
+          <button className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors text-left">
+            <div className="flex items-center mb-2">
+              <Share2 className="h-5 w-5 text-purple-600 mr-2" />
+              <span className="font-medium text-gray-900">Mapa de Relações</span>
+            </div>
+            <p className="text-sm text-gray-600">Visualize as conexões entre personagens e locais</p>
+          </button>
+
+          <button className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors text-left">
+            <div className="flex items-center mb-2">
+              <Clock className="h-5 w-5 text-red-600 mr-2" />
+              <span className="font-medium text-gray-900">Timeline Histórica</span>
+            </div>
+            <p className="text-sm text-gray-600">Linha do tempo completa dos eventos históricos</p>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   // Renderizar conteúdo principal
   const renderMainContent = () => {
     switch (activeTab) {
@@ -3076,14 +3193,27 @@ Formate como JSON:
         return renderHistory();
       case 'relationships':
         return renderRelationships();
+      case 'analytics':
+        return renderAnalytics();
       default:
         return renderOverview();
     }
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-background flex">
+      {/* Menu Lateral */}
+      <SideMenu
+        activeTab={activeTab}
+        activeSubTab={activeSubTab}
+        onTabChange={setActiveTabWithSubTab}
+        onSubTabChange={setActiveSubTab}
+        worldData={worldData}
+      />
+      
+      {/* Conteúdo Principal */}
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
@@ -3125,39 +3255,15 @@ Formate como JSON:
           </div>
         </div>
 
-        {/* Navegação principal */}
-        <div className="border-b border-border mb-8">
-          <nav className="-mb-px flex space-x-8 overflow-x-auto">
-            {mainTabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  setActiveSubTab('');
-                }}
-                className={`group whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
-                  activeTab === tab.id
-                    ? `border-${tab.color}-500 text-${tab.color}-600`
-                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-                }`}
-              >
-                <tab.icon className="h-5 w-5 mr-2" />
-                <div className="text-left">
-                  <div>{tab.label}</div>
-                  <div className="text-xs text-muted-foreground group-hover:text-foreground mt-0.5">
-                    {tab.description}
-                  </div>
-                </div>
-              </button>
-            ))}
-          </nav>
-        </div>
+
 
         {/* Conteúdo principal */}
         {renderMainContent()}
       </div>
 
-      {/* Modal de formulário */}
+
+
+      {/* Modals */}
       {formType === 'location' && (
         <LocationFormModal
           location={editingItem}
@@ -3342,8 +3448,10 @@ Formate como JSON:
           onGenerateWithAI={generateWithAI}
         />
       )}
+
       <ToastContainer />
-    </div>
+        </div>
+      </div>
   );
 };
 

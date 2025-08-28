@@ -12,7 +12,21 @@ import {
   Shield,
   MessageSquare,
   GitMerge,
-  HelpCircle
+  HelpCircle,
+  Share2,
+  BarChart3,
+  Calendar,
+  Clock,
+  Target,
+  Layers,
+  Navigation,
+  Gem,
+  Heart,
+  Star,
+  Crown,
+  Coins,
+  Zap,
+  Brain
 } from 'lucide-react';
 
 export const mainTabs = [
@@ -35,7 +49,7 @@ export const mainTabs = [
     label: 'Culturas', 
     icon: Users, 
     description: 'Povos, idiomas e tradições',
-    color: 'yellow'
+    color: 'purple'
   },
   { 
     id: 'systems', 
@@ -52,41 +66,76 @@ export const mainTabs = [
     color: 'red'
   },
   { 
-    id: 'assistant', 
-    label: 'Assistente IA', 
-    icon: Bot, 
-    description: 'Converse com a IA para ideias',
-    color: 'purple'
+    id: 'relationships', 
+    label: 'Relações', 
+    icon: Share2, 
+    description: 'Mapa de conexões entre elementos',
+    color: 'indigo'
   },
   { 
-    id: 'settings', 
-    label: 'Configurações', 
-    icon: Settings, 
-    description: 'Ajustes do projeto e da IA',
-    color: 'gray'
-  },
-  {
-    id: 'dashboard',
-    label: 'Dashboard',
-    icon: LayoutDashboard,
-    description: 'Visão geral dos projetos',
+    id: 'analytics', 
+    label: 'Analytics', 
+    icon: BarChart3, 
+    description: 'Estatísticas e insights do mundo',
     color: 'teal'
-  },
-  {
-    id: 'editor',
-    label: 'Editor',
-    icon: FileText,
-    description: 'Escreva sua light novel',
-    color: 'cyan'
-  },
-  {
-    id: 'themes',
-    label: 'Temas',
-    icon: Palette,
-    description: 'Temas e estilos visuais',
-    color: 'pink'
   }
 ];
+
+// Submenus organizados por categoria
+export const subMenus = {
+  geography: {
+    label: 'Geografia',
+    icon: MapIcon,
+    color: 'green',
+    items: [
+      { id: 'locations', label: 'Locais', icon: Target, description: 'Cidades, vilas, pontos de interesse' },
+      { id: 'regions', label: 'Regiões', icon: Layers, description: 'Áreas geográficas e territórios' },
+      { id: 'landmarks', label: 'Marcos', icon: Navigation, description: 'Pontos de referência importantes' },
+      { id: 'resources', label: 'Recursos', icon: Gem, description: 'Materiais e recursos naturais' }
+    ]
+  },
+  cultures: {
+    label: 'Culturas',
+    icon: Users,
+    color: 'purple',
+    items: [
+      { id: 'peoples', label: 'Povos', icon: Users, description: 'Raças, etnias e grupos sociais' },
+      { id: 'languages', label: 'Idiomas', icon: MessageSquare, description: 'Línguas e dialetos' },
+      { id: 'religions', label: 'Religiões', icon: Star, description: 'Crenças e sistemas religiosos' },
+      { id: 'traditions', label: 'Tradições', icon: Heart, description: 'Costumes e práticas culturais' }
+    ]
+  },
+  systems: {
+    label: 'Sistemas',
+    icon: Sparkles,
+    color: 'orange',
+    items: [
+      { id: 'magicSystems', label: 'Magia', icon: Sparkles, description: 'Sistemas mágicos e poderes' },
+      { id: 'technologies', label: 'Tecnologia', icon: Zap, description: 'Invenções e avanços tecnológicos' },
+      { id: 'governments', label: 'Política', icon: Crown, description: 'Sistemas de governo e poder' },
+      { id: 'economies', label: 'Economia', icon: Coins, description: 'Sistemas econômicos e comércio' }
+    ]
+  },
+  history: {
+    label: 'História',
+    icon: Book,
+    color: 'red',
+    items: [
+      { id: 'events', label: 'Eventos', icon: Calendar, description: 'Acontecimentos históricos importantes' },
+      { id: 'eras', label: 'Eras', icon: Clock, description: 'Períodos históricos e épocas' }
+    ]
+  },
+  analytics: {
+    label: 'Analytics',
+    icon: BarChart3,
+    color: 'teal',
+    items: [
+      { id: 'statistics', label: 'Estatísticas', icon: BarChart3, description: 'Dados e métricas do mundo' },
+      { id: 'insights', label: 'Insights', icon: Brain, description: 'Análises e descobertas' },
+      { id: 'reports', label: 'Relatórios', icon: FileText, description: 'Relatórios detalhados' }
+    ]
+  }
+};
 
 export const locationTypes = [
   { 
