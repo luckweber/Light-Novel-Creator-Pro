@@ -465,6 +465,32 @@ Formato exato:
   "description": "Descrição",
   "impact": "Impacto",
   "participants": "Participantes"
+}`,
+
+    era: `Crie uma era histórica para uma light novel.
+
+${RULES.jsonFormat}
+
+Inclua:
+- Nome da era
+- Período de tempo (anos de início e fim)
+- Descrição geral da era
+- Características principais
+- Eventos marcantes
+- Figuras importantes
+- Mudanças culturais e tecnológicas
+
+Formato exato:
+{
+  "name": "Nome da Era",
+  "startYear": "Ano de início",
+  "endYear": "Ano de fim",
+  "description": "Descrição geral da era",
+  "characteristics": "Características principais da era",
+  "majorEvents": "Eventos marcantes da era",
+  "keyFigures": "Figuras importantes da era",
+  "culturalChanges": "Mudanças culturais",
+  "technologicalAdvances": "Avanços tecnológicos"
 }`
   },
 

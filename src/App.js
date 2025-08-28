@@ -57,6 +57,7 @@ function App() {
             <Route path="/world-builder/systems/economy" element={<WorldBuilder />} />
             <Route path="/world-builder/history" element={<WorldBuilder />} />
             <Route path="/world-builder/history/events" element={<WorldBuilder />} />
+            <Route path="/world-builder/history/eras" element={<WorldBuilder />} />
             <Route path="/world-builder/analytics" element={<WorldBuilder />} />
             <Route path="/world-builder/analytics/statistics" element={<WorldBuilder />} />
             <Route path="/world-builder/analytics/relationships" element={<WorldBuilder />} />

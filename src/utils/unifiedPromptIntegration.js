@@ -139,6 +139,36 @@ export class UnifiedPromptIntegration {
     return parsedResult;
   }
 
+  async generateEra() {
+    console.log('unifiedPromptIntegration.generateEra() chamada');
+    console.log('aiService disponível:', !!this.aiService);
+    console.log('promptManager disponível:', !!this.promptManager);
+    
+    const promptName = 'history_era';
+    const context = this.buildWorldContext();
+    console.log('Contexto construído:', context);
+    
+    try {
+      console.log('Executando prompt:', promptName);
+      const result = await this.promptManager.executePrompt(promptName, context, this.aiService);
+      console.log('Resultado bruto da IA:', result);
+      
+      const parsedResult = this.cleanAIResponse(result);
+      console.log('Resultado parseado:', parsedResult);
+      
+      // Se o parsing falhou, retorna uma era básica como fallback
+      if (!parsedResult) {
+        console.warn('Falha no parsing JSON, usando fallback para era');
+        return this.createFallbackEra(result);
+      }
+      
+      return parsedResult;
+    } catch (error) {
+      console.error('Erro em generateEra:', error);
+      throw error;
+    }
+  }
+
   async generateMagicSystem() {
     const promptName = 'systems_magic';
     const context = this.buildWorldContext();
@@ -560,6 +590,11 @@ export class UnifiedPromptIntegration {
     // Se a resposta já é um objeto (não uma string), retorna diretamente
     if (typeof response === 'object' && response !== null) {
       console.log('📦 Resposta já é um objeto, retornando diretamente:', response);
+      // Adiciona campo generatedBy se não existir
+      if (!response.generatedBy) {
+        response.generatedBy = 'AI';
+        response.createdAt = new Date().toISOString();
+      }
       return response;
     }
     
@@ -625,8 +660,19 @@ export class UnifiedPromptIntegration {
         const converted = this.convertPortugueseKeys(parsed);
         if (converted) {
           console.log('🔄 Chaves convertidas de português para inglês:', converted);
+          // Adiciona campo generatedBy se não existir
+          if (!converted.generatedBy) {
+            converted.generatedBy = 'AI';
+            converted.createdAt = new Date().toISOString();
+          }
           return converted;
         }
+      }
+      
+      // Adiciona campo generatedBy se não existir
+      if (parsed && typeof parsed === 'object' && !parsed.generatedBy) {
+        parsed.generatedBy = 'AI';
+        parsed.createdAt = new Date().toISOString();
       }
       
       return parsed;
@@ -850,7 +896,9 @@ export class UnifiedPromptIntegration {
       economy: result?.economy || 'Mista',
       pointsOfInterest: result?.pointsOfInterest || ['Ponto de Interesse'],
       atmosphere: result?.atmosphere || 'Misteriosa',
-      secrets: result?.secrets || 'Segredos ocultos'
+      secrets: result?.secrets || 'Segredos ocultos',
+      generatedBy: 'AI',
+      createdAt: new Date().toISOString()
     };
   }
 
@@ -872,7 +920,9 @@ export class UnifiedPromptIntegration {
       conflicts: result?.conflicts || 'Conflitos regionais',
       floraFauna: result?.floraFauna || 'Flora e fauna diversa',
       waterResources: result?.waterResources || 'Rios e lagos',
-      connectivity: result?.connectivity || 'Bem conectada'
+      connectivity: result?.connectivity || 'Bem conectada',
+      generatedBy: 'AI',
+      createdAt: new Date().toISOString()
     };
   }
 
@@ -887,7 +937,9 @@ export class UnifiedPromptIntegration {
       features: result?.features || 'Características únicas',
       accessibility: result?.accessibility || 'Acesso variado',
       legends: result?.legends || 'Lendas associadas',
-      visitors: result?.visitors || 'Visitantes frequentes'
+      visitors: result?.visitors || 'Visitantes frequentes',
+      generatedBy: 'AI',
+      createdAt: new Date().toISOString()
     };
   }
 
@@ -903,7 +955,9 @@ export class UnifiedPromptIntegration {
       value: result?.value || 'Alto valor',
       trade: result?.trade || 'Comercializado',
       regulations: result?.regulations || 'Regulamentações',
-      impact: result?.impact || 'Impacto ambiental'
+      impact: result?.impact || 'Impacto ambiental',
+      generatedBy: 'AI',
+      createdAt: new Date().toISOString()
     };
   }
 
@@ -924,7 +978,9 @@ export class UnifiedPromptIntegration {
       },
       culturalInfluence: result?.culturalInfluence || 'Influenciado pela cultura local',
       socialStatus: result?.socialStatus || 'Idioma respeitado na sociedade',
-      evolution: result?.evolution || 'Evoluiu ao longo dos séculos'
+      evolution: result?.evolution || 'Evoluiu ao longo dos séculos',
+      generatedBy: 'AI',
+      createdAt: new Date().toISOString()
     };
   }
 
@@ -944,7 +1000,9 @@ export class UnifiedPromptIntegration {
       religion: result?.religion || 'Sistema religioso próprio',
       technology: result?.technology || 'Tecnologia avançada',
       economy: result?.economy || 'Economia próspera',
-      conflicts: result?.conflicts || 'Conflitos internos'
+      conflicts: result?.conflicts || 'Conflitos internos',
+      generatedBy: 'AI',
+      createdAt: new Date().toISOString()
     };
   }
 
@@ -961,7 +1019,30 @@ export class UnifiedPromptIntegration {
       legacy: result?.legacy || 'Legado importante',
       sources: result?.sources || 'Fontes históricas',
       controversies: result?.controversies || 'Controvérsias',
-      lessons: result?.lessons || 'Lições aprendidas'
+      lessons: result?.lessons || 'Lições aprendidas',
+      generatedBy: 'AI',
+      createdAt: new Date().toISOString()
+    };
+  }
+
+  createFallbackEra(result) {
+    return {
+      name: result?.name || 'Era Histórica',
+      startYear: result?.startYear || 'Início da era',
+      endYear: result?.endYear || 'Fim da era',
+      description: result?.description || 'Período histórico significativo',
+      characteristics: result?.characteristics || 'Características da era',
+      majorEvents: result?.majorEvents || 'Eventos principais',
+      keyFigures: result?.keyFigures || 'Figuras importantes',
+      culturalChanges: result?.culturalChanges || 'Mudanças culturais',
+      technologicalAdvances: result?.technologicalAdvances || 'Avanços tecnológicos',
+      socialStructures: result?.socialStructures || 'Estruturas sociais',
+      conflicts: result?.conflicts || 'Conflitos da era',
+      achievements: result?.achievements || 'Conquistas importantes',
+      legacy: result?.legacy || 'Legado da era',
+      transition: result?.transition || 'Transição para próxima era',
+      generatedBy: 'AI',
+      createdAt: new Date().toISOString()
     };
   }
 
@@ -977,7 +1058,9 @@ export class UnifiedPromptIntegration {
       powerPlaces: result?.powerPlaces || 'Locais de poder',
       organizations: result?.organizations || 'Organizações mágicas',
       relationship: result?.relationship || 'Relação com tecnologia',
-      mysteries: result?.mysteries || 'Mistérios profundos'
+      mysteries: result?.mysteries || 'Mistérios profundos',
+      generatedBy: 'AI',
+      createdAt: new Date().toISOString()
     };
   }
 
@@ -994,7 +1077,9 @@ export class UnifiedPromptIntegration {
       variations: result?.variations || 'Variações regionais',
       importance: result?.importance || 'Importância social',
       evolution: result?.evolution || 'Evolução histórica',
-      conflicts: result?.conflicts || 'Conflitos ou controvérsias'
+      conflicts: result?.conflicts || 'Conflitos ou controvérsias',
+      generatedBy: 'AI',
+      createdAt: new Date().toISOString()
     };
   }
 
@@ -1011,7 +1096,9 @@ export class UnifiedPromptIntegration {
       festivals: result?.festivals || 'Festivais religiosos',
       relationships: result?.relationships || 'Relações inter-religiosas',
       impact: result?.impact || 'Impacto social',
-      secrets: result?.secrets || 'Segredos sagrados'
+      secrets: result?.secrets || 'Segredos sagrados',
+      generatedBy: 'AI',
+      createdAt: new Date().toISOString()
     };
   }
 
@@ -1028,7 +1115,9 @@ export class UnifiedPromptIntegration {
       development: result?.development || 'Potencial de desenvolvimento',
       risks: result?.risks || 'Riscos associados',
       magicRelation: result?.magicRelation || 'Relação com magia',
-      innovation: result?.innovation || 'Inovação significativa'
+      innovation: result?.innovation || 'Inovação significativa',
+      generatedBy: 'AI',
+      createdAt: new Date().toISOString()
     };
   }
 
@@ -1046,7 +1135,9 @@ export class UnifiedPromptIntegration {
       alliances: result?.alliances || 'Alianças e tratados',
       intrigues: result?.intrigues || 'Intrigas políticas',
       figures: result?.figures || 'Figuras importantes',
-      movements: result?.movements || 'Movimentos políticos'
+      movements: result?.movements || 'Movimentos políticos',
+      generatedBy: 'AI',
+      createdAt: new Date().toISOString()
     };
   }
 
@@ -1064,7 +1155,9 @@ export class UnifiedPromptIntegration {
       opportunities: result?.opportunities || 'Oportunidades',
       resources: result?.resources || 'Recursos principais',
       markets: result?.markets || 'Mercados importantes',
-      guilds: result?.guilds || 'Guildas comerciais'
+      guilds: result?.guilds || 'Guildas comerciais',
+      generatedBy: 'AI',
+      createdAt: new Date().toISOString()
     };
   }
 

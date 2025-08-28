@@ -68,6 +68,38 @@ import AIAgent from '../components/AI/AIAgent';
 import { useAIAgent } from '../hooks/useAIAgent';
 import { createUnifiedPromptIntegration } from '../utils/unifiedPromptIntegration';
 
+/**
+ * WorldBuilder - Componente principal para construção de mundos
+ * 
+ * FUNCIONALIDADE DE EXPANDIR/RECOLHER:
+ * O StandardCard agora suporta uma funcionalidade opcional de expandir/recolher
+ * que pode ser usada por qualquer componente. Para usar:
+ * 
+ * 1. Adicione as props de expandir/recolher ao StandardCard:
+ *    - expandable={true} - Habilita a funcionalidade
+ *    - isExpanded={boolean} - Estado atual (expandido/recolhido)
+ *    - onToggleExpand={() => {}} - Função para alternar o estado
+ *    - expandedContent={<JSX>} - Conteúdo a ser mostrado quando expandido
+ *    - expandButtonTitle="Texto do tooltip" - Tooltip do botão expandir
+ *    - collapseButtonTitle="Texto do tooltip" - Tooltip do botão recolher
+ * 
+ * 2. Use o estado expandedCards para controlar quais cards estão expandidos:
+ *    const isExpanded = expandedCards[item.id];
+ *    const onToggleExpand = () => setExpandedCards(prev => ({ 
+ *      ...prev, [item.id]: !prev[item.id] 
+ *    }));
+ * 
+ * 3. Exemplo de uso:
+ *    <StandardCard
+ *      item={item}
+ *      expandable={true}
+ *      isExpanded={isExpanded}
+ *      onToggleExpand={onToggleExpand}
+ *      expandedContent={<div>Conteúdo expandido aqui</div>}
+ *    />
+ * 
+ * Exemplos implementados: LocationCard, PeopleCard, Era cards
+ */
 const WorldBuilder = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -179,6 +211,274 @@ const WorldBuilder = () => {
   // Estados de interface
   const [showStats, setShowStats] = useState(true);
   const [expandedCards, setExpandedCards] = useState({});
+  
+  // Estados para confirmação de exclusão e controle de requisições
+  const [deleteConfirmation, setDeleteConfirmation] = useState({ show: false, item: null, type: null });
+  const [requestStates, setRequestStates] = useState({
+    magicSystem: false,
+    language: false,
+    technology: false,
+    government: false,
+    economy: false,
+    religion: false,
+    people: false,
+    location: false,
+    region: false,
+    landmark: false,
+    event: false,
+    tradition: false,
+    resource: false,
+    era: false
+  });
+
+  // Função para verificar se uma requisição está em andamento
+  const isRequestInProgress = (type) => {
+    return requestStates[type] || false;
+  };
+
+  // Função para definir estado de requisição
+  const setRequestState = (type, isLoading) => {
+    setRequestStates(prev => ({ ...prev, [type]: isLoading }));
+  };
+
+  // Função para confirmar exclusão
+  const confirmDelete = (item, type) => {
+    setDeleteConfirmation({ show: true, item, type });
+  };
+
+  // Função para executar exclusão
+  const executeDelete = () => {
+    if (deleteConfirmation.item && deleteConfirmation.type) {
+      deleteWorldItem(deleteConfirmation.type, deleteConfirmation.item.id);
+      toast.success(`${deleteConfirmation.type} excluído com sucesso!`);
+      setDeleteConfirmation({ show: false, item: null, type: null });
+    }
+  };
+
+  // Função para cancelar exclusão
+  const cancelDelete = () => {
+    setDeleteConfirmation({ show: false, item: null, type: null });
+  };
+
+  // Componente de card padronizado com funcionalidade opcional de expandir/recolher
+  const StandardCard = ({ 
+    item, 
+    type, 
+    icon: Icon, 
+    iconColor = 'bg-blue-100 text-blue-600',
+    title, 
+    subtitle, 
+    description, 
+    onEdit, 
+    onDelete,
+    children,
+    showActions = true,
+    className = '',
+    onClick,
+    // Props para funcionalidade de expandir/recolher
+    expandable = false,
+    isExpanded = false,
+    onToggleExpand,
+    expandedContent,
+    expandButtonTitle = "Expandir",
+    collapseButtonTitle = "Recolher"
+  }) => {
+    return (
+      <div 
+        className={`card hover-lift group ${className} ${onClick ? 'cursor-pointer' : ''}`}
+        onClick={onClick}
+      >
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center">
+            <div className={`p-2 rounded-lg mr-3 ${iconColor}`}>
+              <Icon className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground group-hover:text-primary-600 transition-colors">
+                {title}
+              </h3>
+              {subtitle && (
+                <p className="text-sm text-muted-foreground">{subtitle}</p>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Botão de expandir/recolher (se habilitado) */}
+            {expandable && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleExpand && onToggleExpand();
+                }}
+                className="p-1.5 bg-white border border-gray-200 rounded-md shadow-sm text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all"
+                title={isExpanded ? collapseButtonTitle : expandButtonTitle}
+              >
+                {isExpanded ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            )}
+            
+            {/* Ações padrão (editar/excluir) */}
+            {showActions && (
+              <>
+                {onEdit && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(item);
+                    }}
+                    className="p-1 text-gray-400 hover:text-green-600 transition-colors"
+                    title="Editar"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </button>
+                )}
+                {onDelete && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      confirmDelete(item, type);
+                    }}
+                    className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                    title="Excluir"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        {description && (
+          <p className="text-gray-600 text-sm leading-relaxed line-clamp-3 mb-4">
+            {renderDescription(description)}
+          </p>
+        )}
+
+        {children}
+
+        {/* Conteúdo expandido */}
+        {expandable && isExpanded && expandedContent && (
+          <div className="mt-4 pt-4 border-t border-gray-200 space-y-3 animate-slide-up">
+            {expandedContent}
+          </div>
+        )}
+
+        <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            {item.generatedBy && (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-purple-100 to-blue-100 text-purple-800 border border-purple-200">
+                <Sparkles className="h-3 w-3 mr-1" />
+                Gerado por IA
+              </span>
+            )}
+            {item.createdAt && (
+              <span className="text-xs text-gray-500">
+                {new Date(item.createdAt).toLocaleDateString('pt-BR')}
+              </span>
+            )}
+          </div>
+          
+          <div className="flex items-center space-x-1">
+            <button 
+              className="p-1 text-gray-400 hover:text-blue-600 transition-colors" 
+              title="Copiar"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(JSON.stringify(item, null, 2));
+                toast.success('Item copiado para a área de transferência!');
+              }}
+            >
+              <Copy className="h-4 w-4" />
+            </button>
+            <button 
+              className="p-1 text-gray-400 hover:text-green-600 transition-colors" 
+              title="Compartilhar"
+              onClick={(e) => {
+                e.stopPropagation();
+                // Implementar compartilhamento
+                toast.info('Funcionalidade de compartilhamento em desenvolvimento');
+              }}
+            >
+              <Share className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Componente de botão de geração com IA padronizado
+  const AIGenerateButton = ({ 
+    type, 
+    onClick, 
+    children, 
+    className = "btn-outline",
+    disabled = false 
+  }) => {
+    const isLoading = isRequestInProgress(type);
+    
+    return (
+      <button 
+        onClick={onClick}
+        disabled={disabled || isLoading}
+        className={`${className} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+      >
+        {isLoading ? (
+          <>
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+            Gerando...
+          </>
+        ) : (
+          <>
+            <Sparkles className="h-4 w-4 mr-2" />
+            {children}
+          </>
+        )}
+      </button>
+    );
+  };
+
+  // Componente de confirmação de exclusão
+  const DeleteConfirmationDialog = () => {
+    if (!deleteConfirmation.show) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="flex items-center mb-4">
+            <div className="p-2 rounded-lg bg-red-100 text-red-600 mr-3">
+              <Trash2 className="h-6 w-6" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Confirmar Exclusão
+            </h3>
+          </div>
+          
+          <p className="text-gray-600 mb-6">
+            Tem certeza que deseja excluir <strong>"{deleteConfirmation.item?.name}"</strong>?
+            Esta ação não pode ser desfeita.
+          </p>
+          
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={cancelDelete}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={executeDelete}
+              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+            >
+              Excluir
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // Inicializar Unified Prompt Integration
   useEffect(() => {
@@ -229,7 +529,7 @@ const WorldBuilder = () => {
       setSortBy(urlParams.sortBy);
       setSortOrder(urlParams.sortOrder);
     }
-  }, [location.pathname, location.search, getCurrentRouteState, activeTab, activeSubTab, viewMode, searchTerm, filterType, sortBy, sortOrder]);
+  }, [location.pathname, location.search, getCurrentRouteState]);
 
   // Função para obter subabas dinamicamente
   const getSubTabs = useCallback((tabId) => {
@@ -242,17 +542,18 @@ const WorldBuilder = () => {
     }));
   }, [worldData]);
 
-  // Função para definir a primeira subaba automaticamente
+  // Função para definir aba ativa sem forçar subaba específica
   const setActiveTabWithSubTab = useCallback((tabId) => {
     setActiveTab(tabId);
     const subTabs = getSubTabs(tabId);
-    if (subTabs.length > 0 && !subTabs.find(tab => tab.id === activeSubTab)) {
-      setActiveSubTab(subTabs[0].id);
+    // Se há subabas, navegar para a aba principal (sem subaba específica)
+    // Isso permite que o usuário escolha qual subaba acessar
+    if (subTabs.length > 0) {
+      navigateToSection(tabId, '');
+    } else {
+      navigateToSection(tabId, '');
     }
-    
-    // Navegar para a seção usando o novo sistema
-    navigateToSection(tabId, subTabs[0]?.id || '');
-  }, [getSubTabs, activeSubTab, navigateToSection]);
+  }, [getSubTabs, navigateToSection]);
 
   // Função para definir subaba ativa
   const setActiveSubTabWithUrl = useCallback((subTabId) => {
@@ -356,7 +657,7 @@ const WorldBuilder = () => {
       return;
     }
 
-    setIsGenerating(true);
+    setRequestState('event', true);
     try {
       const result = await unifiedPromptIntegration.generateEvent();
       
@@ -368,9 +669,40 @@ const WorldBuilder = () => {
       console.error('Erro ao gerar evento:', error);
       toast.error(`Erro ao gerar evento: ${error.message}`);
     } finally {
-      setIsGenerating(false);
+      setRequestState('event', false);
     }
-  }, [unifiedPromptIntegration, addWorldItem]);
+  }, [unifiedPromptIntegration, addWorldItem, setRequestState]);
+
+  // Função para gerar era com IA usando Unified Prompt Integration
+  const generateEra = useCallback(async () => {
+    console.log('generateEra chamada');
+    if (!unifiedPromptIntegration) {
+      console.error('unifiedPromptIntegration não inicializado');
+      toast.error('Sistema de IA não inicializado');
+      return;
+    }
+
+    setRequestState('era', true);
+    try {
+      console.log('Chamando unifiedPromptIntegration.generateEra()');
+      const result = await unifiedPromptIntegration.generateEra();
+      console.log('Resultado da geração:', result);
+      
+      if (result) {
+        console.log('Adicionando era ao worldData:', result);
+        addWorldItem('eras', result);
+        toast.success(`Era "${result.name}" gerada com sucesso!`);
+      } else {
+        console.error('Resultado vazio da geração');
+        toast.error('Erro: resultado vazio da geração');
+      }
+    } catch (error) {
+      console.error('Erro ao gerar era:', error);
+      toast.error(`Erro ao gerar era: ${error.message}`);
+    } finally {
+      setRequestState('era', false);
+    }
+  }, [unifiedPromptIntegration, addWorldItem, setRequestState]);
 
   // Função para gerar sistema de magia com IA usando Unified Prompt Integration
   const generateMagicSystem = useCallback(async () => {
@@ -379,7 +711,7 @@ const WorldBuilder = () => {
       return;
     }
 
-    setIsGenerating(true);
+    setRequestState('magicSystem', true);
     try {
       const result = await unifiedPromptIntegration.generateMagicSystem();
       
@@ -391,7 +723,7 @@ const WorldBuilder = () => {
       console.error('Erro ao gerar sistema de magia:', error);
       toast.error(`Erro ao gerar sistema de magia: ${error.message}`);
     } finally {
-      setIsGenerating(false);
+      setRequestState('magicSystem', false);
     }
   }, [unifiedPromptIntegration, addWorldItem]);
 
@@ -437,7 +769,7 @@ const WorldBuilder = () => {
       return;
     }
 
-    setIsGenerating(true);
+    setRequestState('language', true);
     try {
       const result = await unifiedPromptIntegration.generateLanguage();
       
@@ -449,7 +781,7 @@ const WorldBuilder = () => {
       console.error('Erro ao gerar idioma:', error);
       toast.error(`Erro ao gerar idioma: ${error.message}`);
     } finally {
-      setIsGenerating(false);
+      setRequestState('language', false);
     }
   }, [unifiedPromptIntegration, addWorldItem]);
 
@@ -460,7 +792,7 @@ const WorldBuilder = () => {
       return;
     }
 
-    setIsGenerating(true);
+    setRequestState('religion', true);
     try {
       const result = await unifiedPromptIntegration.generateReligion();
       
@@ -472,7 +804,7 @@ const WorldBuilder = () => {
       console.error('Erro ao gerar religião:', error);
       toast.error(`Erro ao gerar religião: ${error.message}`);
     } finally {
-      setIsGenerating(false);
+      setRequestState('religion', false);
     }
   }, [unifiedPromptIntegration, addWorldItem]);
 
@@ -483,7 +815,7 @@ const WorldBuilder = () => {
       return;
     }
 
-    setIsGenerating(true);
+    setRequestState('tradition', true);
     try {
       const result = await unifiedPromptIntegration.generateTradition();
       
@@ -495,7 +827,7 @@ const WorldBuilder = () => {
       console.error('Erro ao gerar tradição:', error);
       toast.error(`Erro ao gerar tradição: ${error.message}`);
     } finally {
-      setIsGenerating(false);
+      setRequestState('tradition', false);
     }
   }, [unifiedPromptIntegration, addWorldItem]);
 
@@ -506,7 +838,6 @@ const WorldBuilder = () => {
       return;
     }
 
-    setIsGenerating(true);
     try {
       const result = await unifiedPromptIntegration.generateRegion();
       
@@ -517,8 +848,6 @@ const WorldBuilder = () => {
     } catch (error) {
       console.error('Erro ao gerar região:', error);
       toast.error(`Erro ao gerar região: ${error.message}`);
-    } finally {
-      setIsGenerating(false);
     }
   }, [unifiedPromptIntegration, addWorldItem]);
 
@@ -529,7 +858,6 @@ const WorldBuilder = () => {
       return;
     }
 
-    setIsGenerating(true);
     try {
       const result = await unifiedPromptIntegration.generateLandmark();
       
@@ -540,8 +868,6 @@ const WorldBuilder = () => {
     } catch (error) {
       console.error('Erro ao gerar marco:', error);
       toast.error(`Erro ao gerar marco: ${error.message}`);
-    } finally {
-      setIsGenerating(false);
     }
   }, [unifiedPromptIntegration, addWorldItem]);
 
@@ -552,7 +878,6 @@ const WorldBuilder = () => {
       return;
     }
 
-    setIsGenerating(true);
     try {
       const result = await unifiedPromptIntegration.generateResource();
       
@@ -563,8 +888,6 @@ const WorldBuilder = () => {
     } catch (error) {
       console.error('Erro ao gerar recurso:', error);
       toast.error(`Erro ao gerar recurso: ${error.message}`);
-    } finally {
-      setIsGenerating(false);
     }
   }, [unifiedPromptIntegration, addWorldItem]);
 
@@ -575,7 +898,7 @@ const WorldBuilder = () => {
       return;
     }
 
-    setIsGenerating(true);
+    setRequestState('technology', true);
     try {
       const result = await unifiedPromptIntegration.generateTechnology();
       
@@ -587,7 +910,7 @@ const WorldBuilder = () => {
       console.error('Erro ao gerar tecnologia:', error);
       toast.error(`Erro ao gerar tecnologia: ${error.message}`);
     } finally {
-      setIsGenerating(false);
+      setRequestState('technology', false);
     }
   }, [unifiedPromptIntegration, addWorldItem]);
 
@@ -598,7 +921,7 @@ const WorldBuilder = () => {
       return;
     }
 
-    setIsGenerating(true);
+    setRequestState('government', true);
     try {
       const result = await unifiedPromptIntegration.generateGovernment();
       
@@ -610,7 +933,7 @@ const WorldBuilder = () => {
       console.error('Erro ao gerar governo:', error);
       toast.error(`Erro ao gerar governo: ${error.message}`);
     } finally {
-      setIsGenerating(false);
+      setRequestState('government', false);
     }
   }, [unifiedPromptIntegration, addWorldItem]);
 
@@ -621,7 +944,7 @@ const WorldBuilder = () => {
       return;
     }
 
-    setIsGenerating(true);
+    setRequestState('economy', true);
     try {
       const result = await unifiedPromptIntegration.generateEconomy();
       
@@ -633,7 +956,7 @@ const WorldBuilder = () => {
       console.error('Erro ao gerar economia:', error);
       toast.error(`Erro ao gerar economia: ${error.message}`);
     } finally {
-      setIsGenerating(false);
+      setRequestState('economy', false);
     }
   }, [unifiedPromptIntegration, addWorldItem]);
 
@@ -693,7 +1016,7 @@ const WorldBuilder = () => {
       switch (activeSubTab) {
         case 'locations': return worldData?.locations || [];
         case 'regions': return worldData?.regions || [];
-        case 'climate': return worldData?.climates || [];
+        case 'landmarks': return worldData?.landmarks || [];
         case 'resources': return worldData?.resources || [];
         default: return [];
       }
@@ -1219,9 +1542,10 @@ const WorldBuilder = () => {
               Adicionar Manualmente
             </button>
             {aiProvider && (
-              <button 
+              <AIGenerateButton 
+                type="location"
                 onClick={async () => {
-                  setIsGenerating(true);
+                  setRequestState('location', true);
                   try {
                     const result = await generateLocation('random');
                     if (result) {
@@ -1231,15 +1555,12 @@ const WorldBuilder = () => {
                   } catch (error) {
                     toast.error(`Erro ao gerar local: ${error.message}`);
                   } finally {
-                    setIsGenerating(false);
+                    setRequestState('location', false);
                   }
                 }}
-                className="btn-outline"
-                disabled={isGenerating}
               >
-                <Sparkles className="h-4 w-4 mr-2" />
                 Gerar com IA
-              </button>
+              </AIGenerateButton>
             )}
           </div>
         </div>
@@ -1265,165 +1586,130 @@ const WorldBuilder = () => {
     );
   };
 
-  // Componente de card de local
+  // Componente de card de local usando funcionalidade expandir/recolher do StandardCard
   const LocationCard = ({ location }) => {
     const locationTypeInfo = locationTypes.find(t => t.value === location.type) || locationTypes[0];
     const isExpanded = expandedCards[location.id];
+    
+    // Mapear ícones de string para componentes
+    const getIconComponent = (iconName) => {
+      const iconMap = {
+        'Building': Building,
+        'Home': MapPin,
+        'Tent': MapPin,
+        'Crown': Crown,
+        'Castle': Building,
+        'Landmark': MapPin,
+        'Key': MapPin,
+        'Trees': TreePine,
+        'Mountain': MapPin,
+        'Waves': MapPin,
+        'Sailboat': MapPin,
+        'MapPin': MapPin
+      };
+      return iconMap[iconName] || MapPin;
+    };
 
-    return (
-      <div className="card hover-lift group">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center">
-            <div className={`p-2 rounded-lg mr-3 ${locationTypeInfo?.color?.replace('text-', 'text-white bg-')?.replace('-800', '-500')}`}>
-              <locationTypeInfo.icon className="h-5 w-5" />
-            </div>
-            <div>
-                          <h3 className="font-semibold text-foreground group-hover:text-primary-600 transition-colors">
-              {location.name}
-            </h3>
-            <p className="text-sm text-muted-foreground">{locationTypeInfo.label}</p>
-            </div>
+    // Conteúdo expandido para o local
+    const expandedContent = (
+      <>
+        {location.climate && typeof location.climate === 'string' && (
+          <div className="flex items-center text-sm">
+            <Sun className="h-4 w-4 text-orange-500 mr-2" />
+            <span className="text-gray-600">Clima: {location.climate}</span>
           </div>
-          
-          <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={() => setExpandedCards(prev => ({ ...prev, [location.id]: !prev[location.id] }))}
-              className="p-1 text-gray-400 hover:text-gray-600"
-            >
-              {isExpanded ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-            <button
-              onClick={() => {
-                setEditingItem(location);
-                setFormType('location');
-              }}
-              className="p-1 text-gray-400 hover:text-green-600"
-            >
-              <Edit className="h-4 w-4" />
-            </button>
-            <button className="p-1 text-gray-400 hover:text-red-600">
-              <Trash2 className="h-4 w-4" />
-            </button>
+        )}
+        
+        {location.population && typeof location.population === 'string' && (
+          <div className="flex items-center text-sm">
+            <Users className="h-4 w-4 text-blue-500 mr-2" />
+            <span className="text-gray-600">População: {location.population}</span>
           </div>
-        </div>
-
-        <p className={`text-gray-600 text-sm leading-relaxed ${isExpanded ? '' : 'line-clamp-3'}`}>
-          {typeof location.description === 'string' ? location.description : 'Descrição não disponível'}
-        </p>
-
-        {isExpanded && (
-          <div className="mt-4 space-y-3 animate-slide-up">
-            {location.climate && typeof location.climate === 'string' && (
-              <div className="flex items-center text-sm">
-                <Sun className="h-4 w-4 text-orange-500 mr-2" />
-                <span className="text-gray-600">Clima: {location.climate}</span>
-              </div>
-            )}
-            
-            {location.population && typeof location.population === 'string' && (
-              <div className="flex items-center text-sm">
-                <Users className="h-4 w-4 text-blue-500 mr-2" />
-                <span className="text-gray-600">População: {location.population}</span>
-              </div>
-            )}
-            
-            {location.pointsOfInterest?.length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium text-gray-900 mb-2">Pontos de Interesse:</h4>
-                <ul className="text-sm text-gray-600 space-y-1">
-                  {location.pointsOfInterest.map((point, index) => (
-                    <li key={index} className="flex items-center">
-                      <Star className="h-3 w-3 text-yellow-500 mr-2 flex-shrink-0" />
-                      {typeof point === 'string' ? point : JSON.stringify(point)}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Renderizar campos que podem ser objetos */}
-            {renderObjectFields(location)}
+        )}
+        
+        {location.pointsOfInterest?.length > 0 && (
+          <div>
+            <h4 className="text-sm font-medium text-gray-900 mb-2">Pontos de Interesse:</h4>
+            <ul className="text-sm text-gray-600 space-y-1">
+              {location.pointsOfInterest.map((point, index) => (
+                <li key={index} className="flex items-center">
+                  <Star className="h-3 w-3 text-yellow-500 mr-2 flex-shrink-0" />
+                  {typeof point === 'string' ? point : JSON.stringify(point)}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 
-        <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            {location.generatedBy && (
-              <span className="badge badge-primary flex items-center">
-                <Sparkles className="h-3 w-3 mr-1" />
-                IA
-              </span>
-            )}
-            {location.createdAt && (
-              <span className="text-xs text-gray-500">
-                {new Date(location.createdAt).toLocaleDateString('pt-BR')}
-              </span>
-            )}
-          </div>
-          
-          <div className="flex items-center space-x-1">
-            <button className="p-1 text-gray-400 hover:text-blue-600" title="Copiar">
-              <Copy className="h-4 w-4" />
-            </button>
-            <button className="p-1 text-gray-400 hover:text-green-600" title="Compartilhar">
-              <Share className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </div>
+        {/* Renderizar campos que podem ser objetos */}
+        {renderObjectFields(location)}
+      </>
+    );
+
+    return (
+      <StandardCard
+        item={location}
+        type="locations"
+        icon={getIconComponent(locationTypeInfo.icon)}
+        iconColor="bg-blue-100 text-blue-600"
+        title={location.name}
+        subtitle={locationTypeInfo.label}
+        description={location.description}
+        onEdit={(item) => {
+          setEditingItem(item);
+          setFormType('location');
+        }}
+        onDelete={true}
+        // Funcionalidade de expandir/recolher
+        expandable={true}
+        isExpanded={isExpanded}
+        onToggleExpand={() => setExpandedCards(prev => ({ ...prev, [location.id]: !prev[location.id] }))}
+        expandedContent={expandedContent}
+        expandButtonTitle="Expandir detalhes"
+        collapseButtonTitle="Recolher detalhes"
+      />
     );
   };
 
   // Componente de item de lista
   const LocationListItem = ({ location }) => {
     const locationTypeInfo = locationTypes.find(t => t.value === location.type) || locationTypes[0];
+    
+    // Mapear ícones de string para componentes
+    const getIconComponent = (iconName) => {
+      const iconMap = {
+        'Building': Building,
+        'Home': MapPin,
+        'Tent': MapPin,
+        'Crown': Crown,
+        'Castle': Building,
+        'Landmark': MapPin,
+        'Key': MapPin,
+        'Trees': TreePine,
+        'Mountain': MapPin,
+        'Waves': MapPin,
+        'Sailboat': MapPin,
+        'MapPin': MapPin
+      };
+      return iconMap[iconName] || MapPin;
+    };
 
     return (
-      <div className="card flex items-center justify-between hover-lift">
-        <div className="flex items-center flex-1 min-w-0">
-          <div className={`p-2 rounded-lg mr-4 ${locationTypeInfo?.color?.replace('text-', 'text-white bg-')?.replace('-800', '-500')}`}>
-            <locationTypeInfo.icon className="h-5 w-5" />
-          </div>
-          
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center space-x-3">
-              <h3 className="font-semibold text-gray-900 truncate">{location.name}</h3>
-              <span className={`badge ${locationTypeInfo.color}`}>
-                {locationTypeInfo.label}
-              </span>
-              {location.generatedBy && (
-                <span className="badge badge-primary flex items-center">
-                  <Sparkles className="h-3 w-3 mr-1" />
-                  IA
-                </span>
-              )}
-            </div>
-            <p className="text-gray-600 text-sm truncate mt-1">
-              {typeof location.description === 'string' ? location.description : 'Descrição não disponível'}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-2 ml-4">
-          {location.createdAt && (
-            <span className="text-xs text-gray-500">
-              {new Date(location.createdAt).toLocaleDateString('pt-BR')}
-            </span>
-          )}
-          <button
-            onClick={() => {
-              setEditingItem(location);
-              setFormType('location');
-            }}
-            className="p-2 text-gray-400 hover:text-green-600"
-          >
-            <Edit className="h-4 w-4" />
-          </button>
-          <button className="p-2 text-gray-400 hover:text-red-600">
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
+      <StandardCard
+        item={location}
+        type="locations"
+        icon={getIconComponent(locationTypeInfo.icon)}
+        iconColor="bg-blue-100 text-blue-600"
+        title={location.name}
+        subtitle={locationTypeInfo.label}
+        description={location.description}
+        onEdit={(item) => {
+          setEditingItem(item);
+          setFormType('location');
+        }}
+        onDelete={true}
+        className="flex items-center justify-between p-4"
+      />
     );
   };
 
@@ -1449,13 +1735,19 @@ const WorldBuilder = () => {
               Adicionar Região
             </button>
             {aiProvider && (
-              <button 
-                onClick={() => generateRegion()}
-                className="btn-outline"
+              <AIGenerateButton 
+                type="region"
+                onClick={async () => {
+                  setRequestState('region', true);
+                  try {
+                    await generateRegion();
+                  } finally {
+                    setRequestState('region', false);
+                  }
+                }}
               >
-                <Sparkles className="h-4 w-4 mr-2" />
                 Gerar com IA
-              </button>
+              </AIGenerateButton>
             )}
           </div>
         </div>
@@ -1477,38 +1769,44 @@ const WorldBuilder = () => {
               Adicionar Região
             </button>
             {aiProvider && (
-              <button 
-                onClick={() => generateRegion()}
-                className="btn-outline"
+              <AIGenerateButton 
+                type="region"
+                onClick={async () => {
+                  setRequestState('region', true);
+                  try {
+                    await generateRegion();
+                  } finally {
+                    setRequestState('region', false);
+                  }
+                }}
               >
-                <Sparkles className="h-4 w-4 mr-2" />
                 Gerar com IA
-              </button>
+              </AIGenerateButton>
             )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {regions.map((region) => (
-            <div
+            <StandardCard
               key={region.id}
-              className="bg-card rounded-lg border border-border p-6 hover:shadow-md transition-shadow cursor-pointer"
+              item={region}
+              type="regions"
+              icon={Map}
+              iconColor="bg-green-100 text-green-600"
+              title={region.name}
+              subtitle="Região"
+              description={region.description}
+              onEdit={(item) => {
+                setEditingItem(item);
+                setFormType('region');
+              }}
+              onDelete={true}
               onClick={() => {
                 setEditingItem(region);
                 setFormType('region');
               }}
             >
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-lg font-semibold text-foreground">
-                  {region.name}
-                </h4>
-                <Map className="h-5 w-5 text-primary-500" />
-              </div>
-              
-              <p className="text-muted-foreground text-sm line-clamp-3 mb-4">
-                {renderDescription(region.description)}
-              </p>
-
               {region.climate && typeof region.climate === 'string' && (
                 <div className="mb-2">
                   <span className="text-xs font-medium text-muted-foreground">Clima:</span>
@@ -1532,7 +1830,7 @@ const WorldBuilder = () => {
 
               {/* Renderizar campos que podem ser objetos */}
               {renderObjectFields(region)}
-            </div>
+            </StandardCard>
           ))}
         </div>
       </div>
@@ -1561,13 +1859,19 @@ const WorldBuilder = () => {
               Adicionar Marco
             </button>
             {aiProvider && (
-              <button 
-                onClick={() => generateLandmark()}
-                className="btn-outline"
+              <AIGenerateButton 
+                type="landmark"
+                onClick={async () => {
+                  setRequestState('landmark', true);
+                  try {
+                    await generateLandmark();
+                  } finally {
+                    setRequestState('landmark', false);
+                  }
+                }}
               >
-                <Sparkles className="h-4 w-4 mr-2" />
                 Gerar com IA
-              </button>
+              </AIGenerateButton>
             )}
           </div>
         </div>
@@ -1589,46 +1893,44 @@ const WorldBuilder = () => {
               Adicionar Marco
             </button>
             {aiProvider && (
-              <button 
-                onClick={() => generateLandmark()}
-                className="btn-outline"
+              <AIGenerateButton 
+                type="landmark"
+                onClick={async () => {
+                  setRequestState('landmark', true);
+                  try {
+                    await generateLandmark();
+                  } finally {
+                    setRequestState('landmark', false);
+                  }
+                }}
               >
-                <Sparkles className="h-4 w-4 mr-2" />
                 Gerar com IA
-              </button>
+              </AIGenerateButton>
             )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {landmarks.map((landmark) => (
-            <div
+            <StandardCard
               key={landmark.id}
-              className="bg-card rounded-lg border border-border p-6 hover:shadow-md transition-shadow cursor-pointer"
+              item={landmark}
+              type="landmarks"
+              icon={Navigation}
+              iconColor="bg-orange-100 text-orange-600"
+              title={landmark.name}
+              subtitle={landmark.type || "Marco"}
+              description={landmark.description}
+              onEdit={(item) => {
+                setEditingItem(item);
+                setFormType('landmark');
+              }}
+              onDelete={true}
               onClick={() => {
                 setEditingItem(landmark);
                 setFormType('landmark');
               }}
             >
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-lg font-semibold text-foreground">
-                  {landmark.name}
-                </h4>
-                <Navigation className="h-5 w-5 text-primary-500" />
-              </div>
-              
-              <p className="text-muted-foreground text-sm line-clamp-3 mb-4">
-                {renderDescription(landmark.description)}
-              </p>
-
-              {landmark.type && typeof landmark.type === 'string' && (
-                <div className="mb-2">
-                  <span className="inline-block px-2 py-1 bg-primary-100 text-primary-800 text-xs rounded">
-                    {landmark.type}
-                  </span>
-                </div>
-              )}
-
               {landmark.significance && typeof landmark.significance === 'string' && (
                 <div className="mb-2">
                   <span className="text-xs font-medium text-muted-foreground">Importância:</span>
@@ -1645,7 +1947,7 @@ const WorldBuilder = () => {
 
               {/* Renderizar campos que podem ser objetos */}
               {renderObjectFields(landmark)}
-            </div>
+            </StandardCard>
           ))}
         </div>
       </div>
@@ -1674,13 +1976,19 @@ const WorldBuilder = () => {
               Adicionar Recurso
             </button>
             {aiProvider && (
-              <button 
-                onClick={() => generateResource()}
-                className="btn-outline"
+              <AIGenerateButton 
+                type="resource"
+                onClick={async () => {
+                  setRequestState('resource', true);
+                  try {
+                    await generateResource();
+                  } finally {
+                    setRequestState('resource', false);
+                  }
+                }}
               >
-                <Sparkles className="h-4 w-4 mr-2" />
                 Gerar com IA
-              </button>
+              </AIGenerateButton>
             )}
           </div>
         </div>
@@ -1702,46 +2010,44 @@ const WorldBuilder = () => {
               Adicionar Recurso
             </button>
             {aiProvider && (
-              <button 
-                onClick={() => generateResource()}
-                className="btn-outline"
+              <AIGenerateButton 
+                type="resource"
+                onClick={async () => {
+                  setRequestState('resource', true);
+                  try {
+                    await generateResource();
+                  } finally {
+                    setRequestState('resource', false);
+                  }
+                }}
               >
-                <Sparkles className="h-4 w-4 mr-2" />
                 Gerar com IA
-              </button>
+              </AIGenerateButton>
             )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {resources.map((resource) => (
-            <div
+            <StandardCard
               key={resource.id}
-              className="bg-card rounded-lg border border-border p-6 hover:shadow-md transition-shadow cursor-pointer"
+              item={resource}
+              type="resources"
+              icon={Gem}
+              iconColor="bg-purple-100 text-purple-600"
+              title={resource.name}
+              subtitle={resource.type || "Recurso"}
+              description={resource.description}
+              onEdit={(item) => {
+                setEditingItem(item);
+                setFormType('resource');
+              }}
+              onDelete={true}
               onClick={() => {
                 setEditingItem(resource);
                 setFormType('resource');
               }}
             >
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-lg font-semibold text-foreground">
-                  {resource.name}
-                </h4>
-                <Gem className="h-5 w-5 text-secondary-500" />
-              </div>
-              
-              <p className="text-muted-foreground text-sm line-clamp-3 mb-4">
-                {renderDescription(resource.description)}
-              </p>
-
-              {resource.type && (
-                <div className="mb-2">
-                  <span className="inline-block px-2 py-1 bg-secondary-100 text-secondary-800 text-xs rounded">
-                    {resource.type}
-                  </span>
-                </div>
-              )}
-
               {resource.rarity && (
                 <div className="mb-2">
                   <span className="text-xs font-medium text-muted-foreground">Raridade:</span>
@@ -1755,7 +2061,7 @@ const WorldBuilder = () => {
                   <p className="text-sm text-foreground line-clamp-2">{resource.uses}</p>
                 </div>
               )}
-            </div>
+            </StandardCard>
           ))}
         </div>
       </div>
@@ -1921,35 +2227,69 @@ const WorldBuilder = () => {
     );
   };
 
-  // Componente de card de povo
+  // Componente de card de povo com funcionalidade expandir/recolher
   const PeopleCard = ({ people, onClick }) => {
+    const isExpanded = expandedCards[people.id];
+    
+    // Conteúdo expandido para o povo
+    const expandedContent = (
+      <>
+        {people.culture && (
+          <div className="flex items-center text-sm">
+            <Heart className="h-4 w-4 text-red-500 mr-2" />
+            <span className="text-gray-600">Cultura: {people.culture}</span>
+          </div>
+        )}
+        
+        {people.technology && (
+          <div className="flex items-center text-sm">
+            <Zap className="h-4 w-4 text-yellow-500 mr-2" />
+            <span className="text-gray-600">Tecnologia: {people.technology}</span>
+          </div>
+        )}
+        
+        {people.socialStructure && (
+          <div className="flex items-center text-sm">
+            <Building className="h-4 w-4 text-blue-500 mr-2" />
+            <span className="text-gray-600">Estrutura Social: {people.socialStructure}</span>
+          </div>
+        )}
+        
+        {people.beliefs && (
+          <div className="flex items-center text-sm">
+            <Book className="h-4 w-4 text-purple-500 mr-2" />
+            <span className="text-gray-600">Crenças: {people.beliefs}</span>
+          </div>
+        )}
+
+        {/* Renderizar campos que podem ser objetos */}
+        {renderObjectFields(people)}
+      </>
+    );
+
     return (
-      <div className="card hover-lift group" onClick={onClick}>
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center">
-            <div className={`p-2 rounded-lg mr-3 bg-purple-100 text-purple-600`}>
-              <Users className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">
-                {people.name}
-              </h3>
-              <p className="text-sm text-gray-500">{people.classification}</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button className="p-1 text-gray-400 hover:text-purple-600">
-              <Edit className="h-4 w-4" />
-            </button>
-            <button className="p-1 text-gray-400 hover:text-red-600">
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-        <p className={`text-gray-600 text-sm leading-relaxed line-clamp-3`}>
-          {renderDescription(people.description)}
-        </p>
-      </div>
+      <StandardCard
+        item={people}
+        type="peoples"
+        icon={Users}
+        iconColor="bg-purple-100 text-purple-600"
+        title={people.name}
+        subtitle={people.classification}
+        description={people.description}
+        onEdit={(item) => {
+          setEditingItem(item);
+          setFormType('people');
+        }}
+        onDelete={true}
+        onClick={onClick}
+        // Funcionalidade de expandir/recolher
+        expandable={true}
+        isExpanded={isExpanded}
+        onToggleExpand={() => setExpandedCards(prev => ({ ...prev, [people.id]: !prev[people.id] }))}
+        expandedContent={expandedContent}
+        expandButtonTitle="Expandir detalhes"
+        collapseButtonTitle="Recolher detalhes"
+      />
     );
   };
 
@@ -1975,13 +2315,13 @@ const WorldBuilder = () => {
               Adicionar Idioma
             </button>
             {aiProvider && (
-              <button 
+              <AIGenerateButton 
+                type="language"
                 onClick={() => generateLanguage()}
                 className="btn-outline"
               >
-                <Sparkles className="h-4 w-4 mr-2" />
                 Gerar com IA
-              </button>
+              </AIGenerateButton>
             )}
           </div>
         </div>
@@ -2003,38 +2343,37 @@ const WorldBuilder = () => {
               Adicionar Idioma
             </button>
             {aiProvider && (
-              <button 
+              <AIGenerateButton 
+                type="language"
                 onClick={() => generateLanguage()}
                 className="btn-outline"
               >
-                <Sparkles className="h-4 w-4 mr-2" />
                 Gerar com IA
-              </button>
+              </AIGenerateButton>
             )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {languages.map((language) => (
-            <div
+            <StandardCard
               key={language.id}
-              className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+              item={language}
+              type="languages"
+              icon={BookOpen}
+              iconColor="bg-blue-100 text-blue-600"
+              title={language.name}
+              description={language.description}
+              onEdit={(item) => {
+                setEditingItem(item);
+                setFormType('language');
+              }}
+              onDelete={true}
               onClick={() => {
                 setEditingItem(language);
                 setFormType('language');
               }}
             >
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-lg font-semibold text-gray-900">
-                  {language.name}
-                </h4>
-                <BookOpen className="h-5 w-5 text-blue-500" />
-              </div>
-              
-              <p className="text-gray-600 text-sm line-clamp-3 mb-4">
-                {renderDescription(language.description)}
-              </p>
-
               {language.family && (
                 <div className="mb-2">
                   <span className="text-xs font-medium text-gray-500">Família:</span>
@@ -2055,7 +2394,7 @@ const WorldBuilder = () => {
                   <p className="text-sm text-gray-700">{language.script}</p>
                 </div>
               )}
-            </div>
+            </StandardCard>
           ))}
         </div>
       </div>
@@ -2084,13 +2423,13 @@ const WorldBuilder = () => {
               Adicionar Religião
             </button>
             {aiProvider && (
-              <button 
+              <AIGenerateButton 
+                type="religion"
                 onClick={() => generateReligion()}
                 className="btn-outline"
               >
-                <Sparkles className="h-4 w-4 mr-2" />
                 Gerar com IA
-              </button>
+              </AIGenerateButton>
             )}
           </div>
         </div>
@@ -2112,59 +2451,61 @@ const WorldBuilder = () => {
               Adicionar Religião
             </button>
             {aiProvider && (
-              <button 
+              <AIGenerateButton 
+                type="religion"
                 onClick={() => generateReligion()}
                 className="btn-outline"
               >
-                <Sparkles className="h-4 w-4 mr-2" />
                 Gerar com IA
-              </button>
+              </AIGenerateButton>
             )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {religions.map((religion) => (
-            <div
+            <StandardCard
               key={religion.id}
-              className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+              item={religion}
+              type="religions"
+              icon={Star}
+              iconColor="bg-yellow-100 text-yellow-600"
+              title={religion.name}
+              subtitle={religion.type || 'Religião'}
+              description={renderDescription(religion.description)}
+              onEdit={(item) => {
+                setEditingItem(item);
+                setFormType('religion');
+              }}
+              onDelete={true}
               onClick={() => {
                 setEditingItem(religion);
                 setFormType('religion');
               }}
             >
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-lg font-semibold text-gray-900">
-                  {religion.name}
-                </h4>
-                <Star className="h-5 w-5 text-yellow-500" />
+              <div className="space-y-2">
+                {religion.deities && (
+                  <div>
+                    <span className="text-xs font-medium text-gray-500">Divindades:</span>
+                    <p className="text-sm text-gray-700 line-clamp-2">{religion.deities}</p>
+                  </div>
+                )}
+
+                {religion.practices && (
+                  <div>
+                    <span className="text-xs font-medium text-gray-500">Práticas:</span>
+                    <p className="text-sm text-gray-700 line-clamp-2">{religion.practices}</p>
+                  </div>
+                )}
+
+                {religion.followers && (
+                  <div>
+                    <span className="text-xs font-medium text-gray-500">Seguidores:</span>
+                    <p className="text-sm text-gray-700">{religion.followers}</p>
+                  </div>
+                )}
               </div>
-              
-              <p className="text-gray-600 text-sm line-clamp-3 mb-4">
-                {renderDescription(religion.description)}
-              </p>
-
-              {religion.deities && (
-                <div className="mb-2">
-                  <span className="text-xs font-medium text-gray-500">Divindades:</span>
-                  <p className="text-sm text-gray-700 line-clamp-2">{religion.deities}</p>
-                </div>
-              )}
-
-              {religion.practices && (
-                <div className="mb-2">
-                  <span className="text-xs font-medium text-gray-500">Práticas:</span>
-                  <p className="text-sm text-gray-700 line-clamp-2">{religion.practices}</p>
-                </div>
-              )}
-
-              {religion.followers && (
-                <div>
-                  <span className="text-xs font-medium text-gray-500">Seguidores:</span>
-                  <p className="text-sm text-gray-700">{religion.followers}</p>
-                </div>
-              )}
-            </div>
+            </StandardCard>
           ))}
         </div>
       </div>
@@ -2193,13 +2534,13 @@ const WorldBuilder = () => {
               Adicionar Tradição
             </button>
             {aiProvider && (
-              <button 
+              <AIGenerateButton 
+                type="tradition"
                 onClick={() => generateTradition()}
                 className="btn-outline"
               >
-                <Sparkles className="h-4 w-4 mr-2" />
                 Gerar com IA
-              </button>
+              </AIGenerateButton>
             )}
           </div>
         </div>
@@ -2221,60 +2562,53 @@ const WorldBuilder = () => {
               Adicionar Tradição
             </button>
             {aiProvider && (
-              <button 
+              <AIGenerateButton 
+                type="tradition"
                 onClick={() => generateTradition()}
                 className="btn-outline"
               >
-                <Sparkles className="h-4 w-4 mr-2" />
                 Gerar com IA
-              </button>
+              </AIGenerateButton>
             )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {traditions.map((tradition) => (
-            <div
+            <StandardCard
               key={tradition.id}
-              className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+              item={tradition}
+              type="traditions"
+              icon={Heart}
+              iconColor="bg-red-100 text-red-600"
+              title={tradition.name}
+              subtitle={tradition.type}
+              description={renderDescription(tradition.description)}
+              onEdit={(item) => {
+                setEditingItem(item);
+                setFormType('tradition');
+              }}
+              onDelete={true}
               onClick={() => {
                 setEditingItem(tradition);
                 setFormType('tradition');
               }}
             >
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-lg font-semibold text-gray-900">
-                  {tradition.name}
-                </h4>
-                <Heart className="h-5 w-5 text-red-500" />
+              <div className="space-y-2">
+                {tradition.origin && (
+                  <div>
+                    <span className="text-xs font-medium text-gray-500">Origem:</span>
+                    <p className="text-sm text-gray-700 line-clamp-2">{tradition.origin}</p>
+                  </div>
+                )}
+                {tradition.frequency && (
+                  <div>
+                    <span className="text-xs font-medium text-gray-500">Frequência:</span>
+                    <p className="text-sm text-gray-700">{tradition.frequency}</p>
+                  </div>
+                )}
               </div>
-              
-              <p className="text-gray-600 text-sm line-clamp-3 mb-4">
-                {renderDescription(tradition.description)}
-              </p>
-
-              {tradition.type && (
-                <div className="mb-2">
-                  <span className="inline-block px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">
-                    {tradition.type}
-                  </span>
-                </div>
-              )}
-
-              {tradition.origin && (
-                <div className="mb-2">
-                  <span className="text-xs font-medium text-gray-500">Origem:</span>
-                  <p className="text-sm text-gray-700 line-clamp-2">{tradition.origin}</p>
-                </div>
-              )}
-
-              {tradition.frequency && (
-                <div>
-                  <span className="text-xs font-medium text-gray-500">Frequência:</span>
-                  <p className="text-sm text-gray-700">{tradition.frequency}</p>
-                </div>
-              )}
-            </div>
+            </StandardCard>
           ))}
         </div>
       </div>
@@ -2317,13 +2651,13 @@ const WorldBuilder = () => {
               Adicionar Sistema de Magia
             </button>
             {aiProvider && (
-              <button 
+              <AIGenerateButton 
+                type="magicSystem"
                 onClick={() => generateMagicSystem()}
                 className="btn-outline"
               >
-                <Sparkles className="h-4 w-4 mr-2" />
                 Gerar com IA
-              </button>
+              </AIGenerateButton>
             )}
           </div>
         </div>
@@ -2345,64 +2679,78 @@ const WorldBuilder = () => {
               Adicionar Sistema
             </button>
             {aiProvider && (
-              <button 
+              <AIGenerateButton 
+                type="magicSystem"
                 onClick={() => generateMagicSystem()}
                 className="btn-outline"
               >
-                <Sparkles className="h-4 w-4 mr-2" />
                 Gerar com IA
-              </button>
+              </AIGenerateButton>
             )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {magicSystems.map((system) => (
-            <div
-              key={system.id}
-              className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => {
-                setEditingItem(system);
-                setFormType('magicSystem');
-              }}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-lg font-semibold text-gray-900">
-                  {system.name}
-                </h4>
-                <Sparkles className="h-5 w-5 text-purple-500" />
-              </div>
-              
-              <p className="text-gray-600 text-sm line-clamp-3 mb-4">
-                {typeof system.description === 'string' ? system.description : 'Descrição não disponível'}
-              </p>
+          {magicSystems.map((system) => {
+            const isExpanded = expandedCards[system.id];
+            
+            // Conteúdo expandido para o sistema mágico
+            const expandedContent = (
+              <>
+                {system.source && typeof system.source === 'string' && (
+                  <div className="flex items-center text-sm">
+                    <Brain className="h-4 w-4 text-purple-500 mr-2" />
+                    <span className="text-gray-600">Fonte: {system.source}</span>
+                  </div>
+                )}
 
-              {system.source && typeof system.source === 'string' && (
-                <div className="mb-2">
-                  <span className="text-xs font-medium text-gray-500">Fonte:</span>
-                  <p className="text-sm text-gray-700 line-clamp-2">{system.source}</p>
-                </div>
-              )}
+                {system.limitations && typeof system.limitations === 'string' && (
+                  <div className="flex items-start text-sm">
+                    <Zap className="h-4 w-4 text-red-500 mr-2 mt-0.5" />
+                    <span className="text-gray-600">Limitações: {system.limitations}</span>
+                  </div>
+                )}
 
-              {system.limitations && typeof system.limitations === 'string' && (
-                <div>
-                  <span className="text-xs font-medium text-gray-500">Limitações:</span>
-                  <p className="text-sm text-gray-700 line-clamp-2">{system.limitations}</p>
-                </div>
-              )}
+                {system.rules && typeof system.rules === 'string' && (
+                  <div className="flex items-start text-sm">
+                    <Book className="h-4 w-4 text-blue-500 mr-2 mt-0.5" />
+                    <span className="text-gray-600">Regras: {system.rules}</span>
+                  </div>
+                )}
 
-              {/* Renderizar campos que podem ser objetos */}
-              {system.rules && typeof system.rules === 'string' && (
-                <div className="mb-2">
-                  <span className="text-xs font-medium text-gray-500">Regras:</span>
-                  <p className="text-sm text-gray-700 line-clamp-2">{system.rules}</p>
-                </div>
-              )}
+                {/* Renderizar campos que podem ser objetos */}
+                {renderObjectFields(system)}
+              </>
+            );
 
-              {/* Renderizar campos que podem ser objetos */}
-              {renderObjectFields(system)}
-            </div>
-          ))}
+            return (
+              <StandardCard
+                key={system.id}
+                item={system}
+                type="magicSystems"
+                icon={Sparkles}
+                iconColor="bg-purple-100 text-purple-600"
+                title={system.name}
+                description={system.description}
+                onEdit={(item) => {
+                  setEditingItem(item);
+                  setFormType('magicSystem');
+                }}
+                onDelete={true}
+                onClick={() => {
+                  setEditingItem(system);
+                  setFormType('magicSystem');
+                }}
+                // Funcionalidade de expandir/recolher
+                expandable={true}
+                isExpanded={isExpanded}
+                onToggleExpand={() => setExpandedCards(prev => ({ ...prev, [system.id]: !prev[system.id] }))}
+                expandedContent={expandedContent}
+                expandButtonTitle="Expandir detalhes"
+                collapseButtonTitle="Recolher detalhes"
+              />
+            );
+          })}
         </div>
       </div>
     );
@@ -2430,13 +2778,13 @@ const WorldBuilder = () => {
               Adicionar Tecnologia
             </button>
             {aiProvider && (
-              <button
+              <AIGenerateButton
+                type="technology"
                 onClick={() => generateTechnology()}
                 className="btn-outline"
               >
-                <Sparkles className="h-4 w-4 mr-2" />
                 Gerar com IA
-              </button>
+              </AIGenerateButton>
             )}
           </div>
         </div>
@@ -2458,38 +2806,37 @@ const WorldBuilder = () => {
               Adicionar Tecnologia
             </button>
             {aiProvider && (
-              <button
+              <AIGenerateButton
+                type="technology"
                 onClick={() => generateTechnology()}
                 className="btn-outline"
               >
-                <Sparkles className="h-4 w-4 mr-2" />
                 Gerar com IA
-              </button>
+              </AIGenerateButton>
             )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {technologies.map((tech) => (
-            <div
+            <StandardCard
               key={tech.id}
-              className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+              item={tech}
+              type="technologies"
+              icon={Zap}
+              iconColor="bg-yellow-100 text-yellow-600"
+              title={tech.name}
+              description={tech.description}
+              onEdit={(item) => {
+                setEditingItem(item);
+                setFormType('technology');
+              }}
+              onDelete={true}
               onClick={() => {
                 setEditingItem(tech);
                 setFormType('technology');
               }}
             >
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-lg font-semibold text-gray-900">
-                  {tech.name}
-                </h4>
-                <Zap className="h-5 w-5 text-yellow-500" />
-              </div>
-              
-              <p className="text-gray-600 text-sm line-clamp-3 mb-4">
-                {renderDescription(tech.description)}
-              </p>
-
               {tech.level && (
                 <div className="mb-2">
                   <span className="inline-block px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">
@@ -2504,7 +2851,7 @@ const WorldBuilder = () => {
                   <p className="text-sm text-gray-700 line-clamp-2">{tech.applications}</p>
                 </div>
               )}
-            </div>
+            </StandardCard>
           ))}
         </div>
       </div>
@@ -2533,13 +2880,13 @@ const WorldBuilder = () => {
               Adicionar Sistema Político
             </button>
             {aiProvider && (
-              <button
+              <AIGenerateButton
+                type="government"
                 onClick={() => generateGovernment()}
                 className="btn-outline"
               >
-                <Sparkles className="h-4 w-4 mr-2" />
                 Gerar com IA
-              </button>
+              </AIGenerateButton>
             )}
           </div>
         </div>
@@ -2561,38 +2908,37 @@ const WorldBuilder = () => {
               Adicionar Sistema
             </button>
             {aiProvider && (
-              <button
+              <AIGenerateButton
+                type="government"
                 onClick={() => generateGovernment()}
                 className="btn-outline"
               >
-                <Sparkles className="h-4 w-4 mr-2" />
                 Gerar com IA
-              </button>
+              </AIGenerateButton>
             )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {governments.map((gov) => (
-            <div
+            <StandardCard
               key={gov.id}
-              className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+              item={gov}
+              type="governments"
+              icon={Crown}
+              iconColor="bg-indigo-100 text-indigo-600"
+              title={gov.name}
+              description={gov.description}
+              onEdit={(item) => {
+                setEditingItem(item);
+                setFormType('government');
+              }}
+              onDelete={true}
               onClick={() => {
                 setEditingItem(gov);
                 setFormType('government');
               }}
             >
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-lg font-semibold text-gray-900">
-                  {gov.name}
-                </h4>
-                <Crown className="h-5 w-5 text-indigo-500" />
-              </div>
-              
-              <p className="text-gray-600 text-sm line-clamp-3 mb-4">
-                {renderDescription(gov.description)}
-              </p>
-
               {gov.type && (
                 <div className="mb-2">
                   <span className="inline-block px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded">
@@ -2607,7 +2953,7 @@ const WorldBuilder = () => {
                   <p className="text-sm text-gray-700">{gov.leaderTitle}</p>
                 </div>
               )}
-            </div>
+            </StandardCard>
           ))}
         </div>
       </div>
@@ -2636,13 +2982,13 @@ const WorldBuilder = () => {
               Adicionar Sistema Econômico
             </button>
             {aiProvider && (
-              <button
+              <AIGenerateButton
+                type="economy"
                 onClick={() => generateEconomy()}
                 className="btn-outline"
               >
-                <Sparkles className="h-4 w-4 mr-2" />
                 Gerar com IA
-              </button>
+              </AIGenerateButton>
             )}
           </div>
         </div>
@@ -2664,38 +3010,37 @@ const WorldBuilder = () => {
               Adicionar Sistema
             </button>
             {aiProvider && (
-              <button
+              <AIGenerateButton
+                type="economy"
                 onClick={() => generateEconomy()}
                 className="btn-outline"
               >
-                <Sparkles className="h-4 w-4 mr-2" />
                 Gerar com IA
-              </button>
+              </AIGenerateButton>
             )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {economies.map((eco) => (
-            <div
+            <StandardCard
               key={eco.id}
-              className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+              item={eco}
+              type="economies"
+              icon={Coins}
+              iconColor="bg-green-100 text-green-600"
+              title={eco.name}
+              description={eco.description}
+              onEdit={(item) => {
+                setEditingItem(item);
+                setFormType('economy');
+              }}
+              onDelete={true}
               onClick={() => {
                 setEditingItem(eco);
                 setFormType('economy');
               }}
             >
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-lg font-semibold text-gray-900">
-                  {eco.name}
-                </h4>
-                <Coins className="h-5 w-5 text-green-500" />
-              </div>
-              
-              <p className="text-gray-600 text-sm line-clamp-3 mb-4">
-                {renderDescription(eco.description)}
-              </p>
-
               {eco.currency && (
                 <div className="mb-2">
                   <span className="text-xs font-medium text-gray-500">Moeda:</span>
@@ -2709,15 +3054,36 @@ const WorldBuilder = () => {
                   <p className="text-sm text-gray-700 line-clamp-2">{eco.mainExports}</p>
                 </div>
               )}
-            </div>
+            </StandardCard>
           ))}
         </div>
       </div>
     );
   };
 
-  // Renderizar História (Timeline)
+  // Renderizar História com sub-tabs
   const renderHistory = () => {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        {activeSubTab === 'events' && renderEvents()}
+        {activeSubTab === 'eras' && renderEras()}
+        {!activeSubTab && (
+          <div className="text-center py-16">
+            <Clock className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              Selecione uma subaba
+            </h3>
+            <p className="text-gray-500 mb-6">
+              Escolha entre "Eventos" ou "Eras" para visualizar o conteúdo.
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Renderizar Eventos (Timeline)
+  const renderEvents = () => {
     const sortedEvents = [...(worldData?.events || [])].sort((a, b) => (a.year || 0) - (b.year || 0));
 
     return (
@@ -2739,13 +3105,13 @@ const WorldBuilder = () => {
               Adicionar Evento
             </button>
             {aiProvider && (
-              <button 
+              <AIGenerateButton
+                type="event"
                 onClick={() => generateEvent()}
                 className="btn-outline"
               >
-                <Sparkles className="h-4 w-4 mr-2" />
                 Gerar com IA
-              </button>
+              </AIGenerateButton>
             )}
           </div>
         </div>
@@ -2801,17 +3167,145 @@ const WorldBuilder = () => {
                   Adicionar Evento
                 </button>
                 {aiProvider && (
-                  <button 
+                  <AIGenerateButton
+                    type="event"
                     onClick={() => generateEvent()}
                     className="btn-outline"
                   >
-                    <Sparkles className="h-4 w-4 mr-2" />
                     Gerar com IA
-                  </button>
+                  </AIGenerateButton>
                 )}
               </div>
             </div>
           )}
+        </div>
+      </div>
+    );
+  };
+
+  // Renderizar Eras
+  const renderEras = () => {
+    const eras = worldData?.eras || [];
+
+    if (eras.length === 0) {
+      return (
+        <div className="text-center py-16">
+          <Clock className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            Nenhuma era criada ainda
+          </h3>
+          <p className="text-gray-500 mb-6">
+            Adicione eras históricas para organizar a cronologia do seu mundo.
+          </p>
+          <div className="flex justify-center space-x-3">
+            <button 
+              onClick={() => setFormType('era')}
+              className="btn-primary"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar Era
+            </button>
+            {aiProvider && (
+              <AIGenerateButton
+                type="era"
+                onClick={() => generateEra()}
+                className="btn-outline"
+              >
+                Gerar com IA
+              </AIGenerateButton>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Eras Históricas ({eras.length})
+          </h3>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setFormType('era')}
+              className="btn-primary"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar Era
+            </button>
+            {aiProvider && (
+              <AIGenerateButton
+                type="era"
+                onClick={() => generateEra()}
+                className="btn-outline"
+              >
+                Gerar com IA
+              </AIGenerateButton>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {eras.map((era) => {
+            const isExpanded = expandedCards[era.id];
+            
+            // Conteúdo expandido para a era
+            const expandedContent = (
+              <>
+                {era.startYear && (
+                  <div className="flex items-center text-sm">
+                    <Calendar className="h-4 w-4 text-green-500 mr-2" />
+                    <span className="text-gray-600">Início: {era.startYear}</span>
+                  </div>
+                )}
+
+                {era.endYear && (
+                  <div className="flex items-center text-sm">
+                    <Calendar className="h-4 w-4 text-red-500 mr-2" />
+                    <span className="text-gray-600">Fim: {era.endYear}</span>
+                  </div>
+                )}
+
+                {era.characteristics && (
+                  <div className="flex items-start text-sm">
+                    <FileText className="h-4 w-4 text-blue-500 mr-2 mt-0.5" />
+                    <span className="text-gray-600">Características: {era.characteristics}</span>
+                  </div>
+                )}
+
+                {/* Renderizar campos que podem ser objetos */}
+                {renderObjectFields(era)}
+              </>
+            );
+
+            return (
+              <StandardCard
+                key={era.id}
+                item={era}
+                type="eras"
+                icon={Clock}
+                iconColor="bg-red-100 text-red-600"
+                title={era.name}
+                description={era.description}
+                onEdit={(item) => {
+                  setEditingItem(item);
+                  setFormType('era');
+                }}
+                onDelete={true}
+                onClick={() => {
+                  setEditingItem(era);
+                  setFormType('era');
+                }}
+                // Funcionalidade de expandir/recolher
+                expandable={true}
+                isExpanded={isExpanded}
+                onToggleExpand={() => setExpandedCards(prev => ({ ...prev, [era.id]: !prev[era.id] }))}
+                expandedContent={expandedContent}
+                expandButtonTitle="Expandir detalhes"
+                collapseButtonTitle="Recolher detalhes"
+              />
+            );
+          })}
         </div>
       </div>
     );
@@ -3464,6 +3958,193 @@ const WorldBuilder = () => {
         />
       )}
 
+      {formType === 'era' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">
+                {editingItem ? 'Editar Era' : 'Nova Era'}
+              </h2>
+              <button
+                onClick={() => setFormType(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <span className="sr-only">Fechar</span>
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target);
+              const data = {
+                name: formData.get('name'),
+                startYear: formData.get('startYear'),
+                endYear: formData.get('endYear'),
+                description: formData.get('description'),
+                characteristics: formData.get('characteristics'),
+                majorEvents: formData.get('majorEvents'),
+                keyFigures: formData.get('keyFigures'),
+                culturalChanges: formData.get('culturalChanges'),
+                technologicalAdvances: formData.get('technologicalAdvances')
+              };
+              handleSave('eras', data);
+            }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nome da Era *
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    defaultValue={editingItem?.name || ''}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ano de Início
+                  </label>
+                  <input
+                    type="text"
+                    name="startYear"
+                    defaultValue={editingItem?.startYear || ''}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ano de Fim
+                  </label>
+                  <input
+                    type="text"
+                    name="endYear"
+                    defaultValue={editingItem?.endYear || ''}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Descrição Geral
+                </label>
+                <textarea
+                  name="description"
+                  defaultValue={editingItem?.description || ''}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Características Principais
+                </label>
+                <textarea
+                  name="characteristics"
+                  defaultValue={editingItem?.characteristics || ''}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Eventos Marcantes
+                </label>
+                <textarea
+                  name="majorEvents"
+                  defaultValue={editingItem?.majorEvents || ''}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Figuras Importantes
+                </label>
+                <textarea
+                  name="keyFigures"
+                  defaultValue={editingItem?.keyFigures || ''}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Mudanças Culturais
+                </label>
+                <textarea
+                  name="culturalChanges"
+                  defaultValue={editingItem?.culturalChanges || ''}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Avanços Tecnológicos
+                </label>
+                <textarea
+                  name="technologicalAdvances"
+                  defaultValue={editingItem?.technologicalAdvances || ''}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div className="flex justify-end space-x-3">
+                {aiProvider && (
+                  <button
+                    type="button"
+                    onClick={() => generateEra()}
+                    disabled={isRequestInProgress('era')}
+                    className="btn-outline flex items-center"
+                  >
+                    {isRequestInProgress('era') ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                        Gerando...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Gerar com IA
+                      </>
+                    )}
+                  </button>
+                )}
+                
+                <button
+                  type="button"
+                  onClick={() => setFormType(null)}
+                  className="btn-ghost"
+                >
+                  Cancelar
+                </button>
+                
+                <button
+                  type="submit"
+                  className="btn-primary"
+                >
+                  {editingItem ? 'Atualizar' : 'Criar'} Era
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Agente de IA */}
       <AIAgent
         worldData={worldData}
@@ -3473,6 +4154,9 @@ const WorldBuilder = () => {
         isOpen={isAgentOpen}
         onClose={() => setIsAgentOpen(false)}
       />
+
+      {/* Dialog de confirmação de exclusão */}
+      <DeleteConfirmationDialog />
 
       <ToastContainer />
     </div>

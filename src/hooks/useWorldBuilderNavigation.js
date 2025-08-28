@@ -21,6 +21,7 @@ const routeMapping = {
   '/world-builder/systems/economy': { tab: 'systems', subTab: 'economies' },
   '/world-builder/history': { tab: 'history', subTab: '' },
   '/world-builder/history/events': { tab: 'history', subTab: 'events' },
+  '/world-builder/history/eras': { tab: 'history', subTab: 'eras' },
   '/world-builder/analytics': { tab: 'analytics', subTab: '' },
   '/world-builder/analytics/statistics': { tab: 'analytics', subTab: 'statistics' },
   '/world-builder/analytics/relationships': { tab: 'analytics', subTab: 'relationships' }
@@ -52,7 +53,8 @@ const reverseRouteMapping = {
   },
   history: {
     '': '/world-builder/history',
-    events: '/world-builder/history/events'
+    events: '/world-builder/history/events',
+    eras: '/world-builder/history/eras'
   },
   analytics: {
     '': '/world-builder/analytics',
