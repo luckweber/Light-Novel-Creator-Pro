@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   Plus, 
@@ -22,7 +22,8 @@ import {
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import toast from 'react-hot-toast';
-import { AIService, AI_PROMPTS } from '../utils/aiProviders';
+import { AIService } from '../utils/aiProviders';
+import { createUnifiedPromptIntegration } from '../utils/unifiedPromptIntegration';
 import AIIntegration from '../components/AI/AIIntegration';
 import AICharacterGenModal from '../components/character/AICharacterGenModal';
 
@@ -33,7 +34,7 @@ const CharacterGenerator = () => {
     updateCharacter, 
     deleteCharacter, 
     settings,
-    worldData, // Adicionar worldData
+    worldData,
     setSelectedCharacter,
     selectedCharacter 
   } = useStore();
@@ -44,6 +45,7 @@ const CharacterGenerator = () => {
   const [filterRole, setFilterRole] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [showAIGenModal, setShowAIGenModal] = useState(false);
+  const [unifiedPromptIntegration, setUnifiedPromptIntegration] = useState(null);
 
   const [characterForm, setCharacterForm] = useState({
     name: '',
@@ -70,6 +72,21 @@ const CharacterGenerator = () => {
     { value: 'mentor', label: 'Mentor', color: 'bg-purple-100 text-purple-800' },
     { value: 'love_interest', label: 'Interesse Romântico', color: 'bg-pink-100 text-pink-800' }
   ];
+
+  // Inicializar Unified Prompt Integration
+  useEffect(() => {
+    if (settings?.defaultAIProvider && settings?.aiProviders?.[settings.defaultAIProvider]) {
+      const activeProvider = settings.aiProviders[settings.defaultAIProvider];
+      const aiService = new AIService(settings.defaultAIProvider, activeProvider.apiKey, {
+        model: activeProvider.defaultModel,
+        temperature: activeProvider.temperature,
+        maxTokens: activeProvider.maxTokens
+      });
+      
+      const integration = createUnifiedPromptIntegration(worldData, aiService);
+      setUnifiedPromptIntegration(integration);
+    }
+  }, [settings, worldData]);
 
   const handleFormChange = (field, value) => {
     setCharacterForm(prev => ({
@@ -132,28 +149,20 @@ const CharacterGenerator = () => {
   };
 
   const generateWithAI = async (field) => {
+    if (!unifiedPromptIntegration) {
+      toast.error('Sistema de IA não inicializado');
+      return;
+    }
+
     setIsGenerating(true);
     
     try {
-      const activeProvider = settings.aiProviders[settings.defaultAIProvider];
-      if (!activeProvider || !activeProvider.apiKey) {
-        throw new Error('Provedor de IA não configurado corretamente.');
-      }
+      const result = await unifiedPromptIntegration.generateCharacterField(field, characterForm);
       
-      const aiService = new AIService(settings.defaultAIProvider, activeProvider.apiKey, {
-        model: activeProvider.defaultModel,
-        temperature: activeProvider.temperature,
-        maxTokens: activeProvider.maxTokens
-      });
-
-      const basePrompt = `Para um personagem de light novel chamado "${characterForm.name || 'um novo personagem'}", gere uma descrição para o seguinte campo: ${field}.`;
-      const contextPrompt = `Contexto: ${JSON.stringify({name: characterForm.name, role: characterForm.role, personality: characterForm.personality})}`;
-      const fullPrompt = `${basePrompt}\n${contextPrompt}`;
-
-      const result = await aiService.generateText(fullPrompt);
-
-      handleFormChange(field, result);
-      toast.success(`${field} gerado com sucesso!`);
+      if (result) {
+        handleFormChange(field, result);
+        toast.success(`${field} gerado com sucesso!`);
+      }
     } catch (error) {
       toast.error(`Erro ao gerar com IA: ${error.message}`);
     } finally {
@@ -161,74 +170,34 @@ const CharacterGenerator = () => {
     }
   };
 
-  const generateFullCharacter = async (prompt, role, region) => { // Adicionar region
+  const generateFullCharacter = async (prompt, role, region) => {
+    if (!unifiedPromptIntegration) {
+      toast.error('Sistema de IA não inicializado');
+      return;
+    }
+
     setIsGenerating(true);
     setShowAIGenModal(false);
     const toastId = toast.loading('Gerando personagem completo com IA...');
 
     try {
-      const activeProvider = settings.aiProviders[settings.defaultAIProvider];
-      if (!activeProvider || !activeProvider.apiKey) {
-        throw new Error('Provedor de IA não configurado corretamente.');
-      }
-      
-      const aiService = new AIService(settings.defaultAIProvider, activeProvider.apiKey, {
-        model: activeProvider.defaultModel,
-        temperature: activeProvider.temperature,
-        maxTokens: activeProvider.maxTokens
+      const result = await unifiedPromptIntegration.generateCharacter('basic', {
+        prompt,
+        role: role !== 'any' ? role : undefined,
+        region,
+        worldData
       });
-
-      // Criar Dossiê do Mundo
-      const worldContext = {
-        name: worldData.name,
-        genre: worldData.genre,
-        regions: worldData.regions.map(r => r.name),
-        peoples: worldData.peoples.map(p => p.name),
-        magicSystems: worldData.magicSystems.map(m => m.name),
-        technologies: worldData.technologies.map(t => t.name)
-      };
-
-      let fullPrompt = AI_PROMPTS.character.basic;
-      fullPrompt += `\n\nCONTEXTO DO MUNDO:\n${JSON.stringify(worldContext, null, 2)}`;
       
-      if (prompt) {
-        fullPrompt += `\n\nInstruções adicionais do usuário: ${prompt}`;
+      if (result) {
+        setCharacterForm(prev => ({ 
+          ...prev, 
+          ...result, 
+          role: role !== 'any' ? role : (result.role || 'protagonist') 
+        }));
+        setShowForm(true);
+        setEditingCharacter(null);
+        toast.success('Personagem gerado com sucesso!', { id: toastId });
       }
-      if (role && role !== 'any') {
-        fullPrompt += `\nO personagem deve ter o papel de: ${role}`;
-      }
-      if (region) {
-        fullPrompt += `\nO personagem é originário da região de: ${region}. Use isso para influenciar sua aparência, cultura e história.`;
-      }
-
-      const result = await aiService.generateText(fullPrompt);
-      
-      // Extrair o JSON da resposta - apenas o primeiro bloco JSON válido
-      const jsonMatch = result.match(/\{[\s\S]*?\}/);
-      let parsedResult;
-      
-      if (jsonMatch) {
-        try {
-          const jsonString = jsonMatch[0];
-          parsedResult = JSON.parse(jsonString);
-        } catch (e) {
-          // Se o primeiro match falhar, tenta encontrar um JSON mais específico
-          const betterMatch = result.match(/\{\s*"name"[\s\S]*?\}/);
-          if (betterMatch) {
-            parsedResult = JSON.parse(betterMatch[0]);
-          } else {
-            throw new Error("A IA não retornou um JSON válido.");
-          }
-        }
-      } else {
-        throw new Error("A IA não retornou um JSON válido.");
-      }
-      
-      setCharacterForm(prev => ({ ...prev, ...parsedResult, role: role !== 'any' ? role : (parsedResult.role || 'protagonist') }));
-      setShowForm(true); // Abrir o formulário com os dados preenchidos
-      setEditingCharacter(null); // Garantir que estamos em modo de criação
-      toast.success('Personagem gerado com sucesso!', { id: toastId });
-
     } catch (error) {
       toast.error(`Erro ao gerar personagem: ${error.message}`, { id: toastId });
     } finally {

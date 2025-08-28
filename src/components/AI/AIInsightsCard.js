@@ -48,7 +48,7 @@ const AIInsightsCard = () => {
 
   // Gera insights rápidos
   const generateQuickInsights = useCallback(async () => {
-    if (isAnalyzing) return;
+    if (isAnalyzing || !worldData) return;
 
     try {
       const [qualityTips, volumeInsights] = await Promise.all([
@@ -73,7 +73,7 @@ const AIInsightsCard = () => {
 
   // Gera insights automaticamente quando o componente monta
   React.useEffect(() => {
-    if (worldData && !insights) {
+    if (worldData && Object.keys(worldData).length > 0 && !insights) {
       generateQuickInsights();
     }
   }, [worldData, insights, generateQuickInsights]);

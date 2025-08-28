@@ -23,7 +23,8 @@ import {
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import toast from 'react-hot-toast';
-import { AIService, AI_PROMPTS, AI_PROVIDERS, getBestModelForTask } from '../utils/aiProviders';
+import { AIService, AI_PROVIDERS, getBestModelForTask } from '../utils/aiProviders';
+import { createUnifiedPromptIntegration } from '../utils/unifiedPromptIntegration';
 
 const AIAssistant = () => {
   const { 
@@ -48,6 +49,7 @@ const AIAssistant = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [lastConversationLoaded, setLastConversationLoaded] = useState(false);
+  const [unifiedPromptIntegration, setUnifiedPromptIntegration] = useState(null);
   const messagesEndRef = useRef(null);
 
   const tabs = [
@@ -99,6 +101,21 @@ const AIAssistant = () => {
     }
   ];
 
+  // Inicializar Unified Prompt Integration
+  useEffect(() => {
+    if (settings?.defaultAIProvider && settings?.aiProviders?.[settings.defaultAIProvider]) {
+      const activeProvider = settings.aiProviders[settings.defaultAIProvider];
+      const aiService = new AIService(settings.defaultAIProvider, activeProvider.apiKey, {
+        model: activeProvider.defaultModel,
+        temperature: activeProvider.temperature,
+        maxTokens: activeProvider.maxTokens
+      });
+      
+      const integration = createUnifiedPromptIntegration(worldData, aiService);
+      setUnifiedPromptIntegration(integration);
+    }
+  }, [settings, worldData]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -111,13 +128,11 @@ const AIAssistant = () => {
       setLastConversationLoaded(true);
       toast.success(`Última conversa carregada: "${lastConversation.title}"`);
     }
-  }, [aiConversations, lastConversationLoaded, settings.autoLoadLastConversation]); // Executar quando aiConversations mudar
+  }, [aiConversations, lastConversationLoaded, settings.autoLoadLastConversation]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
@@ -147,7 +162,7 @@ const AIAssistant = () => {
         type: 'bot',
         content: aiResponse,
         timestamp: new Date().toISOString(),
-        actionType: actionType // Adicionar tipo de ação
+        actionType: actionType
       };
 
       setMessages(prev => [...prev, botMessage]);
@@ -195,8 +210,13 @@ const AIAssistant = () => {
         return;
       }
 
+      if (!unifiedPromptIntegration) {
+        toast.error('Sistema de IA não inicializado');
+        return;
+      }
+
       // Extrair dados estruturados da resposta da IA
-      const structuredData = await extractStructuredData(message.content, actionType);
+      const structuredData = await unifiedPromptIntegration.extractStructuredData(message.content, actionType);
       
       if (!structuredData) {
         toast.error('Não foi possível extrair dados estruturados da resposta');
@@ -232,64 +252,6 @@ const AIAssistant = () => {
     } catch (error) {
       console.error('Erro ao incorporar ao projeto:', error);
       toast.error('Erro ao incorporar ao projeto');
-    }
-  };
-
-  const extractStructuredData = async (content, actionType) => {
-    try {
-      // Usar IA para extrair dados estruturados da resposta
-      const extractionPrompt = `Extraia dados estruturados do seguinte texto e retorne apenas um JSON válido:
-
-${content}
-
-Para ${actionType === 'character' ? 'personagem' : actionType === 'world' ? 'elemento do mundo' : actionType === 'lore' ? 'lore' : 'narrativa'}, extraia:
-${actionType === 'character' ? `
-- name: nome do personagem
-- description: descrição física e personalidade
-- background: história de fundo
-- personality: traços de personalidade
-- goals: objetivos
-- relationships: relacionamentos
-- abilities: habilidades especiais` : actionType === 'world' ? `
-- name: nome da localização/cultura
-- type: tipo (cidade, reino, cultura, etc.)
-- description: descrição detalhada
-- location: localização geográfica
-- population: população
-- culture: aspectos culturais
-- history: história` : actionType === 'lore' ? `
-- title: título da lenda/mito
-- type: tipo (lenda, mito, profecia, etc.)
-- content: conteúdo completo
-- origin: origem
-- significance: significado` : `
-- title: título do enredo
-- type: tipo (plot, cena, diálogo, etc.)
-- content: conteúdo
-- characters: personagens envolvidos
-- setting: cenário`}
-
-Retorne apenas o JSON, sem texto adicional.`;
-
-      const aiService = new AIService(currentProvider, settings.aiProviders[currentProvider].apiKey, {
-        temperature: 0.3,
-        maxTokens: 1000
-      });
-
-      const response = await aiService.generateText(extractionPrompt, {
-        model: settings.aiProviders[currentProvider].defaultModel
-      });
-
-      // Tentar extrair JSON da resposta
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
-      }
-
-      return null;
-    } catch (error) {
-      console.error('Erro ao extrair dados estruturados:', error);
-      return null;
     }
   };
 
@@ -450,42 +412,11 @@ Retorne apenas o JSON, sem texto adicional.`;
 
   const generateAIResponse = async (prompt) => {
     try {
-      // Verificar se aiProviders existe nas settings (como no CharacterGenerator)
-      if (!settings.aiProviders) {
-        throw new Error('Configuração de IA não encontrada. Configure nas configurações gerais.');
+      if (!unifiedPromptIntegration) {
+        throw new Error('Sistema de IA não inicializado. Configure um provedor de IA nas configurações.');
       }
       
-      // Verificar se há configuração de IA
-      const providerConfig = settings.aiProviders[currentProvider];
-      if (!providerConfig || !providerConfig.apiKey || !providerConfig.enabled) {
-        throw new Error('Provedor de IA não configurado ou desabilitado');
-      }
-
-      // Criar contexto do projeto
-      const projectContext = buildProjectContext();
-      
-      // Preparar prompt com contexto
-      const enhancedPrompt = `${prompt}
-
-${projectContext ? `CONTEXTO DO PROJETO:
-${projectContext}` : ''}
-
-Por favor, responda de forma detalhada e criativa, considerando o contexto fornecido.`;
-
-      // Criar serviço de IA
-      const aiService = new AIService(currentProvider, providerConfig.apiKey, {
-        temperature: providerConfig.temperature || 0.7,
-        maxTokens: providerConfig.maxTokens || 2000
-      });
-
-      // Obter melhor modelo para a tarefa
-      const model = getBestModelForTask(currentProvider, 'creative_writing');
-      
-      // Gerar resposta
-      const response = await aiService.generateText(enhancedPrompt, {
-        model: providerConfig.defaultModel || model
-      });
-
+      const response = await unifiedPromptIntegration.generateAIResponse(prompt);
       return response;
     } catch (error) {
       console.error('Erro ao gerar resposta da IA:', error);
@@ -493,29 +424,7 @@ Por favor, responda de forma detalhada e criativa, considerando o contexto forne
     }
   };
 
-  const buildProjectContext = () => {
-    const context = [];
-    
-    // Adicionar informações do mundo
-    if (worldData.name) {
-      context.push(`Mundo: ${worldData.name}`);
-      if (worldData.description) context.push(`Descrição: ${worldData.description}`);
-      if (worldData.genre) context.push(`Gênero: ${worldData.genre}`);
-    }
-    
-    // Adicionar personagens principais
-    if (characters.length > 0) {
-      const mainCharacters = characters.slice(0, 3);
-      context.push(`Personagens principais: ${mainCharacters.map(c => c.name).join(', ')}`);
-    }
-    
-    // Adicionar elementos de lore
-    if (loreData.myths.length > 0) {
-      context.push(`Mitos conhecidos: ${loreData.myths.length} mitos`);
-    }
-    
-    return context.length > 0 ? context.join('\n') : null;
-  };
+
 
   const handleQuickPrompt = (prompt) => {
     setInputMessage(prompt);
@@ -552,22 +461,14 @@ Por favor, responda de forma detalhada e criativa, considerando o contexto forne
   };
 
   const testConnection = async () => {
-    // Verificar se aiProviders existe nas settings (como no CharacterGenerator)
-    if (!settings.aiProviders) {
-      toast.error('Configuração de IA não encontrada. Configure nas configurações gerais.');
-      return;
-    }
-    
-    const providerConfig = settings.aiProviders[currentProvider];
-    if (!providerConfig || !providerConfig.apiKey) {
-      toast.error('API Key não configurada');
+    if (!unifiedPromptIntegration) {
+      toast.error('Sistema de IA não inicializado. Configure um provedor de IA nas configurações.');
       return;
     }
 
     setConnectionStatus('testing');
     try {
-      const model = getBestModelForTask(currentProvider, 'fast_generation');
-      const result = await AIService.testConnection(currentProvider, providerConfig.apiKey, model);
+      const result = await unifiedPromptIntegration.testConnection();
       
       if (result.success) {
         setIsConnected(true);
@@ -790,14 +691,14 @@ Por favor, responda de forma detalhada e criativa, considerando o contexto forne
             <h4 className="font-medium text-gray-800 mb-2">Personagens</h4>
             <div className="space-y-2">
                              <button
-                 onClick={() => handleQuickPrompt(AI_PROMPTS.character.basic)}
+                 onClick={() => handleQuickPrompt(AI_PROVIDERS[currentProvider]?.prompts?.character?.basic)}
                  className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-50 rounded border border-gray-200 hover:border-gray-300"
                  title="Criar personagem básico - será adicionado automaticamente ao CharacterGenerator"
                >
                  Criar Personagem Básico
                </button>
                <button
-                 onClick={() => handleQuickPrompt(AI_PROMPTS.character.detailed)}
+                 onClick={() => handleQuickPrompt(AI_PROVIDERS[currentProvider]?.prompts?.character?.detailed)}
                  className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-50 rounded border border-gray-200 hover:border-gray-300"
                  title="Criar personagem detalhado - será adicionado automaticamente ao CharacterGenerator"
                >
@@ -810,14 +711,14 @@ Por favor, responda de forma detalhada e criativa, considerando o contexto forne
             <h4 className="font-medium text-gray-800 mb-2">Mundo</h4>
             <div className="space-y-2">
                              <button
-                 onClick={() => handleQuickPrompt(AI_PROMPTS.world.location)}
+                 onClick={() => handleQuickPrompt(AI_PROVIDERS[currentProvider]?.prompts?.world?.location)}
                  className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-50 rounded border border-gray-200 hover:border-gray-300"
                  title="Criar localização - será adicionada automaticamente ao WorldBuilder"
                >
                  Criar Localização
                </button>
                <button
-                 onClick={() => handleQuickPrompt(AI_PROMPTS.world.culture)}
+                 onClick={() => handleQuickPrompt(AI_PROVIDERS[currentProvider]?.prompts?.world?.culture)}
                  className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-50 rounded border border-gray-200 hover:border-gray-300"
                  title="Criar cultura/civilização - será adicionada automaticamente ao WorldBuilder"
                >
@@ -830,14 +731,14 @@ Por favor, responda de forma detalhada e criativa, considerando o contexto forne
             <h4 className="font-medium text-gray-800 mb-2">Narrativa</h4>
             <div className="space-y-2">
                              <button
-                 onClick={() => handleQuickPrompt(AI_PROMPTS.story.plot)}
+                 onClick={() => handleQuickPrompt(AI_PROVIDERS[currentProvider]?.prompts?.story?.plot)}
                  className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-50 rounded border border-gray-200 hover:border-gray-300"
                  title="Gerar ponto de enredo - será adicionado automaticamente à seção de narrativa"
                >
                  Gerar Ponto de Enredo
                </button>
                <button
-                 onClick={() => handleQuickPrompt(AI_PROMPTS.story.dialogue)}
+                 onClick={() => handleQuickPrompt(AI_PROVIDERS[currentProvider]?.prompts?.story?.dialogue)}
                  className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-50 rounded border border-gray-200 hover:border-gray-300"
                  title="Criar diálogo - será adicionado automaticamente à seção de narrativa"
                >
@@ -850,14 +751,14 @@ Por favor, responda de forma detalhada e criativa, considerando o contexto forne
             <h4 className="font-medium text-gray-800 mb-2">Lore</h4>
             <div className="space-y-2">
                              <button
-                 onClick={() => handleQuickPrompt(AI_PROMPTS.lore.legend)}
+                 onClick={() => handleQuickPrompt(AI_PROVIDERS[currentProvider]?.prompts?.lore?.legend)}
                  className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-50 rounded border border-gray-200 hover:border-gray-300"
                  title="Criar lenda - será adicionada automaticamente à seção de lore"
                >
                  Criar Lenda
                </button>
                <button
-                 onClick={() => handleQuickPrompt(AI_PROMPTS.lore.artifact)}
+                 onClick={() => handleQuickPrompt(AI_PROVIDERS[currentProvider]?.prompts?.lore?.artifact)}
                  className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-50 rounded border border-gray-200 hover:border-gray-300"
                  title="Criar artefato - será adicionado automaticamente à seção de lore"
                >

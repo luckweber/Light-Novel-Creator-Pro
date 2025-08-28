@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   Plus, 
@@ -23,11 +23,15 @@ import {
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import toast from 'react-hot-toast';
+import { AIService } from '../utils/aiProviders';
+import { createUnifiedPromptIntegration } from '../utils/unifiedPromptIntegration';
 
 const NarrativeGenerator = () => {
   const { 
     narrativeData, 
-    addNarrativeItem 
+    addNarrativeItem,
+    settings,
+    worldData
   } = useStore();
 
   const [activeTab, setActiveTab] = useState('plotPoints');
@@ -35,6 +39,7 @@ const NarrativeGenerator = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [unifiedPromptIntegration, setUnifiedPromptIntegration] = useState(null);
 
   const [narrativeForm, setNarrativeForm] = useState({
     name: '',
@@ -71,6 +76,21 @@ const NarrativeGenerator = () => {
     { value: 'man_vs_technology', label: 'Homem vs Tecnologia', icon: Zap },
     { value: 'man_vs_supernatural', label: 'Homem vs Sobrenatural', icon: Star }
   ];
+
+  // Inicializar Unified Prompt Integration
+  useEffect(() => {
+    if (settings?.defaultAIProvider && settings?.aiProviders?.[settings.defaultAIProvider]) {
+      const activeProvider = settings.aiProviders[settings.defaultAIProvider];
+      const aiService = new AIService(settings.defaultAIProvider, activeProvider.apiKey, {
+        model: activeProvider.defaultModel,
+        temperature: activeProvider.temperature,
+        maxTokens: activeProvider.maxTokens
+      });
+      
+      const integration = createUnifiedPromptIntegration(worldData, aiService);
+      setUnifiedPromptIntegration(integration);
+    }
+  }, [settings, worldData]);
 
   const handleFormChange = (field, value) => {
     setNarrativeForm(prev => ({
@@ -134,60 +154,22 @@ const NarrativeGenerator = () => {
   };
 
   const generateWithAI = async (field) => {
+    if (!unifiedPromptIntegration) {
+      toast.error('Sistema de IA não inicializado');
+      return;
+    }
+
     setIsGenerating(true);
     
     try {
-      // Simulate AI generation
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const result = await unifiedPromptIntegration.generateNarrativeField(field, narrativeForm, activeTab);
       
-      const aiResponses = {
-        plotPoints: {
-          name: 'A Descoberta do Artefato',
-          description: 'O protagonista encontra um artefato antigo que revela uma verdade chocante sobre sua origem e destino.',
-          characters: 'Protagonista, Mentor, Antagonista',
-          locations: 'Ruínas Antigas, Biblioteca Secreta, Templo Esquecido',
-          consequences: 'Muda completamente a direção da história e força o protagonista a questionar tudo que sabia.',
-          timeline: 'Acontece no primeiro terço da história, após a introdução dos personagens principais.'
-        },
-        storyArcs: {
-          name: 'Arco de Descoberta',
-          description: 'O protagonista descobre sua verdadeira identidade e propósito, enfrentando desafios que testam sua determinação.',
-          characters: 'Protagonista, Aliados, Oponentes',
-          locations: 'Múltiplas localizações conforme a jornada se desenvolve',
-          consequences: 'Transformação fundamental do personagem e estabelecimento de novos objetivos.',
-          timeline: 'Desenvolve-se ao longo de vários capítulos, com pontos de tensão e revelações.'
-        },
-        themes: {
-          name: 'Identidade e Destino',
-          description: 'Explora como as escolhas individuais moldam o destino e como a identidade pode ser tanto uma prisão quanto uma libertação.',
-          characters: 'Todos os personagens principais, cada um representando diferentes aspectos do tema',
-          locations: 'Locais simbólicos que refletem a jornada de autodescoberta',
-          consequences: 'Profunda reflexão sobre o que significa ser quem somos e para onde vamos.',
-          timeline: 'Tema que permeia toda a narrativa, com momentos de destaque em pontos-chave.'
-        },
-        conflicts: {
-          name: 'Conflito de Lealdades',
-          description: 'O protagonista deve escolher entre sua família de sangue e sua nova família de aliados.',
-          characters: 'Protagonista, Família Original, Novos Aliados',
-          locations: 'Casa da Família, Base dos Aliados, Locais Neutros',
-          consequences: 'Decisão que define o caráter do protagonista e afeta todos os relacionamentos futuros.',
-          timeline: 'Conflito que se intensifica gradualmente até um momento de decisão crítica.'
-        },
-        resolutions: {
-          name: 'Reconciliação e Aceitação',
-          description: 'O protagonista encontra um equilíbrio entre suas diferentes identidades e aceita seu destino único.',
-          characters: 'Protagonista, Todos os Personagens Principais',
-          locations: 'Local simbólico que representa união e paz',
-          consequences: 'Resolução satisfatória que honra a jornada de todos os personagens.',
-          timeline: 'Ocorre no final da história, proporcionando fechamento adequado.'
-        }
-      };
-
-      const response = aiResponses[activeTab]?.[field] || 'Conteúdo gerado com AI';
-      handleFormChange(field, response);
-      toast.success(`${field} gerado com AI!`);
+      if (result) {
+        handleFormChange(field, result);
+        toast.success(`${field} gerado com sucesso!`);
+      }
     } catch (error) {
-      toast.error('Erro ao gerar com AI');
+      toast.error(`Erro ao gerar com IA: ${error.message}`);
     } finally {
       setIsGenerating(false);
     }

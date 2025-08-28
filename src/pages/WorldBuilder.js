@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useWorldBuilderNavigation } from '../hooks/useWorldBuilderNavigation';
 import { 
   Globe, 
   Plus, 
@@ -64,8 +66,21 @@ import GovernmentFormModal from '../components/world_builder/GovernmentFormModal
 import SideMenu from '../components/world_builder/SideMenu';
 import AIAgent from '../components/AI/AIAgent';
 import { useAIAgent } from '../hooks/useAIAgent';
+import { createUnifiedPromptIntegration } from '../utils/unifiedPromptIntegration';
 
 const WorldBuilder = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  // Hook de navegação híbrida
+  const {
+    getCurrentRouteState,
+    navigateToSection,
+    navigateWithParams,
+    updateParams,
+    isCurrentRoute
+  } = useWorldBuilderNavigation();
+  
   const { 
     worldData, 
     updateWorldData, 
@@ -79,7 +94,7 @@ const WorldBuilder = () => {
     chapters
   } = useStore();
 
-  // Estados principais
+  // Estados principais - agora sincronizados com o hook de navegação
   const [activeTab, setActiveTab] = useState('overview');
   const [activeSubTab, setActiveSubTab] = useState('');
   const [viewMode, setViewMode] = useState('grid');
@@ -100,6 +115,53 @@ const WorldBuilder = () => {
     generateSmartElement
   } = useAIAgent(aiProvider, settings);
   
+  // Função para renderizar descrições com segurança
+  const renderDescription = (description) => {
+    if (typeof description === 'string') {
+      return description;
+    } else if (description && typeof description === 'object') {
+      return JSON.stringify(description);
+    } else {
+      return 'Descrição não disponível';
+    }
+  };
+
+  // Função para renderizar campos com segurança
+  const renderField = (value) => {
+    if (typeof value === 'string') {
+      return value;
+    } else if (value && typeof value === 'object') {
+      return JSON.stringify(value);
+    } else {
+      return 'Valor não disponível';
+    }
+  };
+
+  // Função para renderizar campos de objeto com segurança
+  const renderObjectFields = (obj) => {
+    return Object.entries(obj).map(([key, value]) => {
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        return (
+          <div key={key} className="mb-2">
+            <span className="text-xs font-medium text-muted-foreground">{key}:</span>
+            <p className="text-sm text-foreground">{JSON.stringify(value)}</p>
+          </div>
+        );
+      }
+      return null;
+    });
+  };
+  
+  // Função para ler parâmetros da URL (mantida para compatibilidade)
+  const getUrlParams = useCallback(() => {
+    return getCurrentRouteState();
+  }, [getCurrentRouteState]);
+
+  // Função para atualizar parâmetros da URL (mantida para compatibilidade)
+  const updateUrlParams = useCallback((params) => {
+    updateParams(params);
+  }, [updateParams]);
+  
   // Estados de filtro e busca
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
@@ -110,10 +172,64 @@ const WorldBuilder = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [batchGeneration, setBatchGeneration] = useState(false);
-  
+
+  // Unified Prompt Integration
+  const [unifiedPromptIntegration, setUnifiedPromptIntegration] = useState(null);
+
   // Estados de interface
   const [showStats, setShowStats] = useState(true);
   const [expandedCards, setExpandedCards] = useState({});
+
+  // Inicializar Unified Prompt Integration
+  useEffect(() => {
+    if (aiProvider && settings?.aiProviders?.[aiProvider]) {
+      const providerSettings = settings.aiProviders[aiProvider];
+      const aiService = new AIService(aiProvider, providerSettings.apiKey, {
+        model: providerSettings.defaultModel,
+        temperature: providerSettings.temperature,
+        maxTokens: providerSettings.maxTokens
+      });
+      
+      const integration = createUnifiedPromptIntegration(worldData, aiService);
+      setUnifiedPromptIntegration(integration);
+    }
+  }, [aiProvider, settings, worldData]);
+
+  // Sincronizar estado com parâmetros da URL
+  useEffect(() => {
+    const urlParams = getCurrentRouteState();
+    
+    // Atualiza aba ativa se diferente da URL
+    if (urlParams.tab !== activeTab) {
+      setActiveTab(urlParams.tab);
+    }
+    
+    // Atualiza subaba ativa se diferente da URL
+    if (urlParams.subTab !== activeSubTab) {
+      setActiveSubTab(urlParams.subTab);
+    }
+    
+    // Atualiza modo de visualização se diferente da URL
+    if (urlParams.viewMode !== viewMode) {
+      setViewMode(urlParams.viewMode);
+    }
+    
+    // Atualiza termo de busca se diferente da URL
+    if (urlParams.search !== searchTerm) {
+      setSearchTerm(urlParams.search);
+    }
+    
+    // Atualiza filtro se diferente da URL
+    if (urlParams.filterType !== filterType) {
+      setFilterType(urlParams.filterType);
+    }
+    
+    // Atualiza ordenação se diferente da URL
+    if (urlParams.sortBy !== sortBy || urlParams.sortOrder !== sortOrder) {
+      setSortBy(urlParams.sortBy);
+      setSortOrder(urlParams.sortOrder);
+    }
+  }, [location.pathname, location.search, getCurrentRouteState, activeTab, activeSubTab, viewMode, searchTerm, filterType, sortBy, sortOrder]);
 
   // Função para obter subabas dinamicamente
   const getSubTabs = useCallback((tabId) => {
@@ -133,32 +249,46 @@ const WorldBuilder = () => {
     if (subTabs.length > 0 && !subTabs.find(tab => tab.id === activeSubTab)) {
       setActiveSubTab(subTabs[0].id);
     }
-  }, [getSubTabs, activeSubTab]);
+    
+    // Navegar para a seção usando o novo sistema
+    navigateToSection(tabId, subTabs[0]?.id || '');
+  }, [getSubTabs, activeSubTab, navigateToSection]);
 
-  // Inicialização do provedor de IA
-  // Configurar provedor de IA padrão
-  useEffect(() => {
-    // O aiProvider agora é derivado de settings, não precisa de setter
-  }, [settings]);
+  // Função para definir subaba ativa
+  const setActiveSubTabWithUrl = useCallback((subTabId) => {
+    setActiveSubTab(subTabId);
+    navigateToSection(activeTab, subTabId);
+  }, [activeTab, navigateToSection]);
 
-  // Função para obter serviço de IA
-  const getAIService = useCallback(() => {
-    if (!aiProvider || !settings?.aiProviders?.[aiProvider]) {
-      throw new Error('Nenhum provedor de IA configurado');
-    }
+  // Função para definir modo de visualização
+  const setViewModeWithUrl = useCallback((mode) => {
+    setViewMode(mode);
+    updateParams({ viewMode: mode });
+  }, [updateParams]);
 
-    const providerSettings = settings.aiProviders[aiProvider];
-    return new AIService(aiProvider, providerSettings.apiKey, {
-      model: providerSettings.defaultModel,
-      temperature: providerSettings.temperature,
-      maxTokens: providerSettings.maxTokens
-    });
-  }, [aiProvider, settings]);
+  // Função para definir termo de busca
+  const setSearchTermWithUrl = useCallback((term) => {
+    setSearchTerm(term);
+    updateParams({ search: term });
+  }, [updateParams]);
 
-  // Função para gerar conteúdo com IA
-  const generateWithAI = useCallback(async (type, prompt, context = {}) => {
-    if (!aiProvider) {
-      toast.error('Configure um provedor de IA nas configurações');
+  // Função para definir filtro
+  const setFilterTypeWithUrl = useCallback((type) => {
+    setFilterType(type);
+    updateParams({ filterType: type });
+  }, [updateParams]);
+
+  // Função para definir ordenação
+  const setSortWithUrl = useCallback((sortByValue, sortOrderValue) => {
+    setSortBy(sortByValue);
+    setSortOrder(sortOrderValue);
+    updateParams({ sortBy: sortByValue, sortOrder: sortOrderValue });
+  }, [updateParams]);
+
+  // Função para gerar local com IA usando Unified Prompt Integration
+  const generateLocation = useCallback(async (type = 'random') => {
+    if (!unifiedPromptIntegration) {
+      toast.error('Sistema de IA não inicializado');
       return null;
     }
 
@@ -166,30 +296,12 @@ const WorldBuilder = () => {
     setGenerationProgress(0);
 
     try {
-      const service = getAIService();
-      const model = getBestModelForTask(aiProvider, 'creative_writing');
-      
       // Simular progresso
       const progressInterval = setInterval(() => {
         setGenerationProgress(prev => Math.min(prev + 10, 90));
       }, 200);
 
-      // Construir prompt contextual
-      let contextualPrompt = prompt;
-      
-      if (context.worldName) {
-        contextualPrompt = `Para o mundo "${context.worldName}":\n\n${prompt}`;
-      }
-
-      if (context.existingElements?.length > 0) {
-        contextualPrompt += `\n\nElementos existentes para referência:\n${context.existingElements.map(el => `- ${el.name}: ${el.description}`).join('\n')}`;
-      }
-
-      if (context.characters?.length > 0) {
-        contextualPrompt += `\n\nPersonagens relacionados:\n${context.characters.map(char => `- ${char.name}: ${char.description}`).join('\n')}`;
-      }
-
-      const result = await service.generateText(contextualPrompt, { model });
+      const result = await unifiedPromptIntegration.generateLocation(type);
       
       clearInterval(progressInterval);
       setGenerationProgress(100);
@@ -199,616 +311,116 @@ const WorldBuilder = () => {
         setIsGenerating(false);
       }, 500);
 
-      return result;
+      if (result) {
+        console.log('Local gerado:', result);
+        return result;
+      }
+      
+      return null;
     } catch (error) {
       setIsGenerating(false);
       setGenerationProgress(0);
       console.error('Erro na geração:', error);
-      toast.error(`Erro ao gerar conteúdo: ${error.message}`);
+      toast.error(`Erro ao gerar local: ${error.message}`);
       return null;
     }
-  }, [aiProvider, getAIService]);
+  }, [unifiedPromptIntegration]);
 
-  // Função para limpar e validar resposta da IA
-  const cleanAIResponse = useCallback((response) => {
-    if (!response) return null;
-    
-    let cleaned = response.trim();
-    
-    // Remover marcadores de código
-    if (cleaned.includes('```json')) {
-      cleaned = cleaned.split('```json')[1]?.split('```')[0] || cleaned;
-    } else if (cleaned.includes('```')) {
-      cleaned = cleaned.split('```')[1] || cleaned;
-    }
-    
-    // Remover possíveis prefixos ou sufixos de texto
-    const jsonStart = cleaned.indexOf('{');
-    const jsonEnd = cleaned.lastIndexOf('}');
-    
-    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
-      cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
-    }
-    
-    // Limpar espaços extras e quebras de linha
-    cleaned = cleaned.replace(/\s+/g, ' ').trim();
-    
-    // Converter campos em português para inglês se necessário
-    const portugueseToEnglish = {
-      // Regiões
-      '"Nome da Região"': '"name"',
-      '"Tipo Geográfico"': '"type"',
-      '"Clima Predominante"': '"climate"',
-      '"Variações Sazonais"': '"seasonalVariations"',
-      '"Terreno e Topografia"': '"terrain"',
-      '"Recursos Naturais"': '"naturalResources"',
-      '"População Estimada"': '"population"',
-      '"Distribuição"': '"distribution"',
-      '"Principais Assentamentos e Cidades"': '"settlements"',
-      '"Rotas Comerciais e de Transporte"': '"tradeRoutes"',
-      '"Características Ambientais Únicas"': '"uniqueFeatures"',
-      '"Perigos Naturais ou Sobrenaturais"': '"dangers"',
-      '"Importância Estratégica ou Econômica"': '"strategicImportance"',
-      '"Conflitos Territoriais ou Disputas"': '"conflicts"',
-      '"Flora e Fauna Características"': '"floraFauna"',
-      '"Recursos Hídricos"': '"waterResources"',
-      '"Conectividade com Outras Regiões"': '"connectivity"',
-      
-      // Marcos/Landmarks
-      '"Nome do Marco"': '"name"',
-      '"Tipo do Marco"': '"type"',
-      '"Importância Histórica"': '"significance"',
-      '"Localização Específica"': '"location"',
-      '"Características Especiais"': '"features"',
-      '"Lendas Associadas"': '"legends"',
-      '"Como Acessar"': '"access"',
-      '"Perigos ou Desafios"': '"dangers"',
-      '"Impacto na Narrativa"': '"narrativeImpact"',
-      
-      // Idiomas/Languages
-      '"Nome do Idioma"': '"name"',
-      '"Família Linguística"': '"family"',
-      '"Principais Falantes"': '"speakers"',
-      '"Sistema de Escrita"': '"script"',
-      '"Exemplos de Palavras"': '"examples"',
-      '"Dialetos Regionais"': '"dialects"',
-      '"Influências Culturais"': '"culturalInfluence"',
-      '"Status Social"': '"socialStatus"',
-      '"Evolução Histórica"': '"evolution"',
-      
-      // Recursos/Resources
-      '"Nome do Recurso"': '"name"',
-      '"Tipo do Recurso"': '"type"',
-      '"Nível de Raridade"': '"rarity"',
-      '"Principais Usos"': '"uses"',
-      '"Onde é Encontrado"': '"location"',
-      '"Métodos de Extração"': '"extraction"',
-      '"Valor Econômico"': '"value"',
-      '"Propriedades Especiais"': '"properties"',
-      '"Impacto na Sociedade"': '"impact"',
-      
-      // Tradições/Traditions
-      '"Nome da Tradição"': '"name"',
-      '"Tipo da Tradição"': '"type"',
-      '"Origem Histórica"': '"origin"',
-      '"Como é Praticada"': '"practice"',
-      '"Significado Cultural"': '"meaning"',
-      '"Quem Participa"': '"participants"',
-      '"Quando Ocorre"': '"frequency"',
-      '"Elementos Simbólicos"': '"symbols"',
-      '"Variações Regionais"': '"variations"',
-      '"Importância Social"': '"importance"',
-      '"Evolução Histórica"': '"evolution"',
-      '"Conflitos ou Controvérsias"': '"conflicts"',
-      
-      // Campos gerais
-      '"Nome"': '"name"',
-      '"Tipo"': '"type"',
-      '"Descrição"': '"description"',
-      '"Clima"': '"climate"',
-      '"População"': '"population"',
-      '"Cultura"': '"culture"',
-      '"Governo"': '"government"',
-      '"Economia"': '"economy"',
-      '"Pontos de Interesse"': '"pointsOfInterest"',
-      '"Atmosfera"': '"atmosphere"',
-      '"Segredos"': '"secrets"'
-    };
-    
-    // Aplicar conversões
-    Object.entries(portugueseToEnglish).forEach(([portuguese, english]) => {
-      cleaned = cleaned.replace(new RegExp(portuguese, 'g'), english);
-    });
-    
-    return cleaned;
-  }, []);
-
-  // Função para gerar local com IA
-  const generateLocation = useCallback(async (type = 'random') => {
-    // Gera prompt contextualizado usando o agente
-    const contextualPrompt = await generateElementPrompt('location', 'local', worldData);
-    
-    const prompts = {
-      random: `Crie um local único e interessante para uma light novel.
-
-REGRAS IMPORTANTES:
-1. Responda APENAS com um JSON válido
-2. NÃO inclua texto explicativo antes ou depois do JSON
-3. NÃO use markdown ou blocos de código
-4. Use aspas duplas para strings
-5. Escape caracteres especiais nas strings
-
-Inclua:
-- Nome criativo e evocativo
-- Tipo de local (cidade, floresta, castelo, etc.)
-- Descrição visual detalhada
-- História e significado cultural
-- Habitantes típicos
-- Pontos de interesse importantes
-- Atmosfera e sensações únicas
-
-Formato exato:
-{
-  "name": "Nome do Local",
-  "type": "tipo",
-  "description": "Descrição detalhada...",
-  "climate": "Clima predominante",
-  "population": "Informações sobre população",
-  "culture": "Aspectos culturais",
-  "government": "Sistema de governo",
-  "economy": "Base econômica",
-  "pointsOfInterest": ["Ponto 1", "Ponto 2", "Ponto 3"],
-  "atmosphere": "Descrição da atmosfera",
-  "secrets": "Segredos ou mistérios do local"
-}`,
-
-      city: `Crie uma cidade fascinante para uma light novel com arquitetura única, distritos interessantes, e uma rica vida urbana.
-
-REGRAS IMPORTANTES:
-1. Responda APENAS com um JSON válido
-2. NÃO inclua texto explicativo antes ou depois do JSON
-3. NÃO use markdown ou blocos de código
-4. Use aspas duplas para strings
-
-Formato exato:
-{
-  "name": "Nome da Cidade",
-  "type": "cidade",
-  "description": "Descrição detalhada...",
-  "climate": "Clima predominante",
-  "population": "Informações sobre população",
-  "culture": "Aspectos culturais",
-  "government": "Sistema de governo",
-  "economy": "Base econômica",
-  "pointsOfInterest": ["Ponto 1", "Ponto 2", "Ponto 3"],
-  "atmosphere": "Descrição da atmosfera",
-  "secrets": "Segredos ou mistérios do local"
-}`,
-      
-      wilderness: `Crie uma área selvagem misteriosa com paisagens únicas, criaturas interessantes e segredos ocultos.
-
-REGRAS IMPORTANTES:
-1. Responda APENAS com um JSON válido
-2. NÃO inclua texto explicativo antes ou depois do JSON
-3. NÃO use markdown ou blocos de código
-4. Use aspas duplas para strings
-
-Formato exato:
-{
-  "name": "Nome da Área Selvagem",
-  "type": "selvagem",
-  "description": "Descrição detalhada...",
-  "climate": "Clima predominante",
-  "population": "Informações sobre população",
-  "culture": "Aspectos culturais",
-  "government": "Sistema de governo",
-  "economy": "Base econômica",
-  "pointsOfInterest": ["Ponto 1", "Ponto 2", "Ponto 3"],
-  "atmosphere": "Descrição da atmosfera",
-  "secrets": "Segredos ou mistérios do local"
-}`,
-      
-      mystical: `Crie um local mágico com propriedades sobrenaturais, energia mística e fenômenos inexplicáveis.
-
-REGRAS IMPORTANTES:
-1. Responda APENAS com um JSON válido
-2. NÃO inclua texto explicativo antes ou depois do JSON
-3. NÃO use markdown ou blocos de código
-4. Use aspas duplas para strings
-
-Formato exato:
-{
-  "name": "Nome do Local Mágico",
-  "type": "mágico",
-  "description": "Descrição detalhada...",
-  "climate": "Clima predominante",
-  "population": "Informações sobre população",
-  "culture": "Aspectos culturais",
-  "government": "Sistema de governo",
-  "economy": "Base econômica",
-  "pointsOfInterest": ["Ponto 1", "Ponto 2", "Ponto 3"],
-  "atmosphere": "Descrição da atmosfera",
-  "secrets": "Segredos ou mistérios do local"
-}`
-    };
-
-    // Combina o prompt contextualizado com o prompt específico
-    const basePrompt = prompts[type] || prompts.random;
-    const finalPrompt = contextualPrompt ? `${contextualPrompt}\n\n${basePrompt}` : basePrompt;
-
-    const context = {
-      worldName: worldData?.name || 'Mundo da Light Novel',
-      existingElements: worldData?.locations || [],
-      characters: characters?.slice(0, 3) || []
-    };
-
-    const result = await generateWithAI('location', finalPrompt, context);
-    
-    if (result) {
-      try {
-        // Limpar a resposta da IA
-        const cleanResult = cleanAIResponse(result);
-        
-        if (!cleanResult) {
-          throw new Error('Resposta da IA não pôde ser limpa');
-        }
-        
-        // Tentar parsear como JSON
-        const locationData = JSON.parse(cleanResult);
-        
-        console.log('Local gerado:', locationData);
-        
-        return {
-          id: Date.now(),
-          createdAt: new Date().toISOString(),
-          generatedBy: aiProvider,
-          ...locationData
-        };
-      } catch (parseError) {
-        console.error('Erro ao parsear JSON:', parseError);
-        console.log('Resposta original:', result);
-        
-        // Fallback: tentar extrair informações usando regex
-        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
-        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
-        const typeMatch = result.match(/"type":\s*"([^"]+)"/);
-        
-        if (nameMatch && descriptionMatch) {
-          return {
-            id: Date.now(),
-            name: nameMatch[1],
-            type: typeMatch ? typeMatch[1] : (type === 'random' ? 'city' : type),
-            description: descriptionMatch[1],
-            createdAt: new Date().toISOString(),
-            generatedBy: aiProvider
-          };
-        }
-        
-        // Último fallback: usar a resposta como descrição
-        return {
-          id: Date.now(),
-          name: `Local Gerado ${Date.now()}`,
-          type: type === 'random' ? 'city' : type,
-          description: result,
-          createdAt: new Date().toISOString(),
-          generatedBy: aiProvider
-        };
-      }
-    }
-    
-    return null;
-  }, [generateWithAI, cleanAIResponse, worldData, characters, aiProvider, generateElementPrompt]);
-
-  // Função para gerar povo com IA (conectada aos botões)
+  // Função para gerar povo com IA usando Unified Prompt Integration
   const generatePeople = useCallback(async () => {
-    const prompt = `Crie um povo ou raça para uma light novel.
+    if (!unifiedPromptIntegration) {
+      toast.error('Sistema de IA não inicializado');
+      return;
+    }
 
-REGRAS IMPORTANTES:
-1. Responda APENAS com um JSON válido
-2. NÃO inclua texto explicativo antes ou depois do JSON
-3. NÃO use markdown ou blocos de código
-4. Use aspas duplas para strings
-5. Escape caracteres especiais nas strings
-
-Inclua:
-- Nome
-- Classificação (humano, elfo, etc.)
-- Descrição física e cultural
-- Sociedade e estrutura política
-- Tradições e costumes
-
-Formato exato:
-{
-  "name": "Nome",
-  "classification": "Classificação",
-  "description": "Descrição",
-  "society": "Sociedade",
-  "traditions": "Tradições",
-  "appearance": "Aparência"
-}`;
-
-    const context = {
-      worldName: worldData?.name,
-      existingElements: worldData?.peoples || []
-    };
-    
-    const result = await generateWithAI('people', prompt, context);
-
-    if (result) {
-      try {
-        // Limpar a resposta da IA
-        const cleanResult = cleanAIResponse(result);
-        
-        if (!cleanResult) {
-          throw new Error('Resposta da IA não pôde ser limpa');
-        }
-        
-        // Tentar parsear como JSON
-        const peopleData = JSON.parse(cleanResult);
-        
-        console.log('Povo gerado:', peopleData);
-        
-        addWorldItem('peoples', peopleData);
-        toast.success(`Povo "${peopleData.name}" gerado com sucesso!`);
-      } catch (parseError) {
-        console.error('Erro ao parsear JSON:', parseError);
-        console.log('Resposta original:', result);
-        
-        // Fallback: tentar extrair informações usando regex
-        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
-        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
-        const classificationMatch = result.match(/"classification":\s*"([^"]+)"/);
-        
-        if (nameMatch && descriptionMatch) {
-          const peopleData = {
-            id: Date.now(),
-            name: nameMatch[1],
-            classification: classificationMatch ? classificationMatch[1] : 'Desconhecido',
-            description: descriptionMatch[1],
-            createdAt: new Date().toISOString(),
-            generatedBy: aiProvider
-          };
-          
-          addWorldItem('peoples', peopleData);
-          toast.success(`Povo "${peopleData.name}" gerado com sucesso!`);
-        } else {
-        toast.error('A IA retornou um formato inválido.');
+    setIsGenerating(true);
+    try {
+      const result = await unifiedPromptIntegration.generatePeople();
+      
+      if (result) {
+        addWorldItem('peoples', result);
+        toast.success(`Povo "${result.name}" gerado com sucesso!`);
       }
+    } catch (error) {
+      console.error('Erro ao gerar povo:', error);
+      toast.error(`Erro ao gerar povo: ${error.message}`);
+    } finally {
+      setIsGenerating(false);
     }
-    }
-  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
+  }, [unifiedPromptIntegration, addWorldItem]);
 
-  // Função para gerar evento com IA
+  // Função para gerar evento com IA usando Unified Prompt Integration
   const generateEvent = useCallback(async () => {
-    const prompt = `Crie um evento histórico para uma light novel.
+    if (!unifiedPromptIntegration) {
+      toast.error('Sistema de IA não inicializado');
+      return;
+    }
 
-REGRAS IMPORTANTES:
-1. Responda APENAS com um JSON válido
-2. NÃO inclua texto explicativo antes ou depois do JSON
-3. NÃO use markdown ou blocos de código
-4. Use aspas duplas para strings
-5. Escape caracteres especiais nas strings
-
-Inclua:
-- Nome do evento
-- Ano aproximado
-- Tipo (político, guerra, descoberta, etc.)
-- Descrição detalhada
-- Impacto no mundo
-- Principais participantes
-
-Formato exato:
-{
-  "name": "Nome do Evento",
-  "year": "Ano",
-  "type": "Tipo",
-  "description": "Descrição",
-  "impact": "Impacto",
-  "participants": "Participantes"
-}`;
-
-    const context = {
-      worldName: worldData?.name,
-      existingEvents: worldData?.events || []
-    };
-    
-    const result = await generateWithAI('event', prompt, context);
-
-    if (result) {
-      try {
-        const cleanResult = cleanAIResponse(result);
-        if (!cleanResult) {
-          throw new Error('Resposta da IA não pôde ser limpa');
-        }
-        const eventData = JSON.parse(cleanResult);
-        console.log('Evento gerado:', eventData);
-        addWorldItem('events', eventData);
-        toast.success(`Evento "${eventData.name}" gerado com sucesso!`);
-      } catch (parseError) {
-        console.error('Erro ao parsear JSON:', parseError);
-        console.log('Resposta original:', result);
-        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
-        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
-        const typeMatch = result.match(/"type":\s*"([^"]+)"/);
-        if (nameMatch && descriptionMatch) {
-          const eventData = {
-            id: Date.now(),
-            name: nameMatch[1],
-            year: 'Ano histórico',
-            type: typeMatch ? typeMatch[1] : 'Evento Histórico',
-            description: descriptionMatch[1],
-            impact: 'Impacto significativo no mundo',
-            participants: 'Participantes importantes',
-            createdAt: new Date().toISOString(),
-            generatedBy: aiProvider
-          };
-          addWorldItem('events', eventData);
-          toast.success(`Evento "${eventData.name}" gerado com sucesso!`);
-        } else {
-        toast.error('A IA retornou um formato inválido.');
+    setIsGenerating(true);
+    try {
+      const result = await unifiedPromptIntegration.generateEvent();
+      
+      if (result) {
+        addWorldItem('events', result);
+        toast.success(`Evento "${result.name}" gerado com sucesso!`);
       }
+    } catch (error) {
+      console.error('Erro ao gerar evento:', error);
+      toast.error(`Erro ao gerar evento: ${error.message}`);
+    } finally {
+      setIsGenerating(false);
     }
-    }
-  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
+  }, [unifiedPromptIntegration, addWorldItem]);
 
-  // Função para gerar sistema de magia com IA
+  // Função para gerar sistema de magia com IA usando Unified Prompt Integration
   const generateMagicSystem = useCallback(async () => {
-    const prompt = `Crie um sistema de magia único para uma light novel.
+    if (!unifiedPromptIntegration) {
+      toast.error('Sistema de IA não inicializado');
+      return;
+    }
 
-REGRAS IMPORTANTES:
-1. Responda APENAS com um JSON válido
-2. NÃO inclua texto explicativo antes ou depois do JSON
-3. NÃO use markdown ou blocos de código
-4. Use aspas duplas para strings
-5. Escape caracteres especiais nas strings
-
-Inclua:
-- Nome do sistema
-- Descrição detalhada
-- Regras e funcionamento
-- Fonte de poder
-- Limitações e custos
-
-Formato exato:
-{
-  "name": "Nome do Sistema",
-  "description": "Descrição detalhada",
-  "rules": "Regras de funcionamento",
-  "source": "Fonte de poder",
-  "limitations": "Limitações e custos"
-}`;
-
-    const context = {
-      worldName: worldData?.name,
-      existingSystems: worldData?.magicSystems || []
-    };
-    
-    const result = await generateWithAI('magicSystem', prompt, context);
-
-    if (result) {
-      try {
-        const cleanResult = cleanAIResponse(result);
-        if (!cleanResult) {
-          throw new Error('Resposta da IA não pôde ser limpa');
-        }
-        const systemData = JSON.parse(cleanResult);
-        console.log('Sistema de magia gerado:', systemData);
-        addWorldItem('magicSystems', systemData);
-        toast.success(`Sistema "${systemData.name}" gerado com sucesso!`);
-      } catch (parseError) {
-        console.error('Erro ao parsear JSON:', parseError);
-        console.log('Resposta original:', result);
-        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
-        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
-        const rulesMatch = result.match(/"rules":\s*"([^"]+)"/);
-        if (nameMatch && descriptionMatch) {
-          const systemData = {
-            id: Date.now(),
-            name: nameMatch[1],
-            description: descriptionMatch[1],
-            rules: rulesMatch ? rulesMatch[1] : 'Regras complexas de magia',
-            source: 'Fonte mágica natural',
-            limitations: 'Limitações e custos significativos',
-            createdAt: new Date().toISOString(),
-            generatedBy: aiProvider
-          };
-          addWorldItem('magicSystems', systemData);
-          toast.success(`Sistema "${systemData.name}" gerado com sucesso!`);
-        } else {
-        toast.error('A IA retornou um formato inválido.');
+    setIsGenerating(true);
+    try {
+      const result = await unifiedPromptIntegration.generateMagicSystem();
+      
+      if (result) {
+        addWorldItem('magicSystems', result);
+        toast.success(`Sistema "${result.name}" gerado com sucesso!`);
       }
+    } catch (error) {
+      console.error('Erro ao gerar sistema de magia:', error);
+      toast.error(`Erro ao gerar sistema de magia: ${error.message}`);
+    } finally {
+      setIsGenerating(false);
     }
-    }
-  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
+  }, [unifiedPromptIntegration, addWorldItem]);
 
   // Função genérica para processar elementos gerados com contexto inteligente
   const processGeneratedElement = useCallback(async (elementType, elementKey) => {
+    if (!unifiedPromptIntegration) {
+      toast.error('Sistema de IA não inicializado');
+      return null;
+    }
+
     try {
-      const result = await generateSmartElement(elementType, worldData, { volumes, chapters, characters });
+      const result = await unifiedPromptIntegration.generateSmartElement(elementType, worldData, { volumes, chapters, characters });
       
       if (result) {
-        try {
-          const cleanResult = cleanAIResponse(result);
-          if (!cleanResult) {
-            throw new Error('Resposta da IA não pôde ser limpa');
-          }
-          const elementData = JSON.parse(cleanResult);
-          console.log(`${elementType} gerado:`, elementData);
-          
-          // Verifica se já existe um elemento com o mesmo nome
-          const existingElements = worldData?.[elementKey] || [];
-          const isDuplicate = existingElements.some(existing => 
-            existing.name?.toLowerCase() === elementData.name?.toLowerCase()
-          );
-          
-          if (isDuplicate) {
-            toast.error(`Já existe um ${elementType} com o nome "${elementData.name}". Tentando gerar novamente...`);
-            // Tenta gerar novamente
-            return await processGeneratedElement(elementType, elementKey);
-          }
-          
-          // Adiciona timestamp e provedor
-          elementData.id = elementData.id || Date.now();
-          elementData.createdAt = elementData.createdAt || new Date().toISOString();
-          elementData.generatedBy = aiProvider;
-          
-          addWorldItem(elementKey, elementData);
-          toast.success(`${elementType} "${elementData.name}" gerado com sucesso!`);
-          return elementData;
-        } catch (parseError) {
-          console.error('Erro ao parsear JSON:', parseError);
-          console.log('Resposta original:', result);
-          
-          // Tenta extrair dados básicos com regex mais robusto
-          const nameMatch = result.match(/"name":\s*"([^"]+)"/) || 
-                           result.match(/"Nome da Região":\s*"([^"]+)"/) || 
-                           result.match(/"Nome do Marco":\s*"([^"]+)"/) || 
-                           result.match(/"Nome do Idioma":\s*"([^"]+)"/) || 
-                           result.match(/"Nome do Recurso":\s*"([^"]+)"/) || 
-                           result.match(/"Nome da Tradição":\s*"([^"]+)"/) || 
-                           result.match(/"Nome":\s*"([^"]+)"/);
-          const descriptionMatch = result.match(/"description":\s*"([^"]+)"/) || result.match(/"Descrição":\s*"([^"]+)"/);
-          const typeMatch = result.match(/"type":\s*"([^"]+)"/) || 
-                           result.match(/"Tipo Geográfico":\s*"([^"]+)"/) || 
-                           result.match(/"Tipo do Marco":\s*"([^"]+)"/) || 
-                           result.match(/"Tipo do Recurso":\s*"([^"]+)"/) || 
-                           result.match(/"Tipo da Tradição":\s*"([^"]+)"/) || 
-                           result.match(/"Tipo":\s*"([^"]+)"/);
-          const climateMatch = result.match(/"climate":\s*"([^"]+)"/) || result.match(/"Clima Predominante":\s*"([^"]+)"/) || result.match(/"Clima":\s*"([^"]+)"/);
-          const populationMatch = result.match(/"population":\s*"([^"]+)"/) || result.match(/"População Estimada":\s*"([^"]+)"/) || result.match(/"População":\s*"([^"]+)"/);
-          
-          if (nameMatch) {
-            const elementData = {
-              id: Date.now(),
-              name: nameMatch[1],
-              description: descriptionMatch ? descriptionMatch[1] : `Descrição da ${elementType}`,
-              type: typeMatch ? typeMatch[1] : 'Tipo não especificado',
-              climate: climateMatch ? climateMatch[1] : 'Clima não especificado',
-              population: populationMatch ? populationMatch[1] : 'População não especificada',
-              createdAt: new Date().toISOString(),
-              generatedBy: aiProvider
-            };
-            
-            // Verifica se já existe um elemento com o mesmo nome
-            const existingElements = worldData?.[elementKey] || [];
-            const isDuplicate = existingElements.some(existing => 
-              existing.name?.toLowerCase() === elementData.name?.toLowerCase()
-            );
-            
-            if (isDuplicate) {
-              toast.error(`Já existe um ${elementType} com o nome "${elementData.name}". Tentando gerar novamente...`);
-              // Tenta gerar novamente
-              return await processGeneratedElement(elementType, elementKey);
-            }
-            
-            addWorldItem(elementKey, elementData);
-            toast.success(`${elementType} "${elementData.name}" gerado com sucesso!`);
-            return elementData;
-          } else {
-            toast.error('A IA retornou um formato inválido.');
-            return null;
-          }
+        // Verifica se já existe um elemento com o mesmo nome
+        const existingElements = worldData?.[elementKey] || [];
+        const isDuplicate = existingElements.some(existing => 
+          existing.name?.toLowerCase() === result.name?.toLowerCase()
+        );
+        
+        if (isDuplicate) {
+          toast.error(`Já existe um ${elementType} com o nome "${result.name}". Tentando gerar novamente...`);
+          // Tenta gerar novamente
+          return await processGeneratedElement(elementType, elementKey);
         }
+        
+        addWorldItem(elementKey, result);
+        toast.success(`${elementType} "${result.name}" gerado com sucesso!`);
+        return result;
       }
       return null;
     } catch (error) {
@@ -816,299 +428,214 @@ Formato exato:
       toast.error(`Erro ao gerar ${elementType}`);
       return null;
     }
-  }, [generateSmartElement, cleanAIResponse, worldData, volumes, chapters, characters, addWorldItem, aiProvider]);
+  }, [unifiedPromptIntegration, worldData, volumes, chapters, characters, addWorldItem]);
 
   // Função para gerar idioma com IA
   const generateLanguage = useCallback(async () => {
-    await processGeneratedElement('language', 'languages');
-  }, [processGeneratedElement]);
+    if (!unifiedPromptIntegration) {
+      toast.error('Sistema de IA não inicializado');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const result = await unifiedPromptIntegration.generateLanguage();
+      
+      if (result) {
+        addWorldItem('languages', result);
+        toast.success(`Idioma "${result.name}" gerado com sucesso!`);
+      }
+    } catch (error) {
+      console.error('Erro ao gerar idioma:', error);
+      toast.error(`Erro ao gerar idioma: ${error.message}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [unifiedPromptIntegration, addWorldItem]);
 
   // Função para gerar religião com IA
   const generateReligion = useCallback(async () => {
-    await processGeneratedElement('religion', 'religions');
-  }, [processGeneratedElement]);
+    if (!unifiedPromptIntegration) {
+      toast.error('Sistema de IA não inicializado');
+      return;
+    }
 
-  // Função antiga de religião (mantida para compatibilidade)
-  const generateReligionOld = useCallback(async () => {
-    const prompt = `Crie uma religião única para uma light novel.
-
-REGRAS IMPORTANTES:
-1. Responda APENAS com um JSON válido
-2. NÃO inclua texto explicativo antes ou depois do JSON
-3. NÃO use markdown ou blocos de código
-4. Use aspas duplas para strings
-5. Escape caracteres especiais nas strings
-
-Inclua:
-- Nome da religião
-- Principais divindades ou conceitos
-- Descrição das crenças centrais
-- Práticas e rituais
-- Seguidores principais
-- Símbolos sagrados
-
-Formato exato:
-{
-  "name": "Nome da Religião",
-  "deities": "Divindades principais",
-  "description": "Crenças centrais",
-  "practices": "Práticas e rituais",
-  "followers": "Principais seguidores",
-  "symbols": "Símbolos sagrados"
-}`;
-
-    const context = {
-      worldName: worldData?.name,
-      existingReligions: worldData?.religions || [],
-      peoples: worldData?.peoples || []
-    };
-    
-    const result = await generateWithAI('religion', prompt, context);
-
-    if (result) {
-      try {
-        const cleanResult = cleanAIResponse(result);
-        if (!cleanResult) {
-          throw new Error('Resposta da IA não pôde ser limpa');
-        }
-        const religionData = JSON.parse(cleanResult);
-        console.log('Religião gerada:', religionData);
-        addWorldItem('religions', religionData);
-        toast.success(`Religião "${religionData.name}" gerada com sucesso!`);
-      } catch (parseError) {
-        console.error('Erro ao parsear JSON:', parseError);
-        console.log('Resposta original:', result);
-        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
-        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
-        const deitiesMatch = result.match(/"deities":\s*"([^"]+)"/);
-        if (nameMatch && descriptionMatch) {
-          const religionData = {
-            id: Date.now(),
-            name: nameMatch[1],
-            deities: deitiesMatch ? deitiesMatch[1] : 'Divindades locais',
-            description: descriptionMatch[1],
-            practices: 'Rituais e cerimônias tradicionais',
-            followers: 'Fiéis devotos',
-            symbols: 'Símbolos sagrados únicos',
-            createdAt: new Date().toISOString(),
-            generatedBy: aiProvider
-          };
-          addWorldItem('religions', religionData);
-          toast.success(`Religião "${religionData.name}" gerada com sucesso!`);
-        } else {
-        toast.error('A IA retornou um formato inválido.');
+    setIsGenerating(true);
+    try {
+      const result = await unifiedPromptIntegration.generateReligion();
+      
+      if (result) {
+        addWorldItem('religions', result);
+        toast.success(`Religião "${result.name}" gerada com sucesso!`);
       }
+    } catch (error) {
+      console.error('Erro ao gerar religião:', error);
+      toast.error(`Erro ao gerar religião: ${error.message}`);
+    } finally {
+      setIsGenerating(false);
     }
-    }
-  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
+  }, [unifiedPromptIntegration, addWorldItem]);
 
   // Função para gerar tradição com IA
   const generateTradition = useCallback(async () => {
-    await processGeneratedElement('tradition', 'traditions');
-  }, [processGeneratedElement]);
+    if (!unifiedPromptIntegration) {
+      toast.error('Sistema de IA não inicializado');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const result = await unifiedPromptIntegration.generateTradition();
+      
+      if (result) {
+        addWorldItem('traditions', result);
+        toast.success(`Tradição "${result.name}" gerada com sucesso!`);
+      }
+    } catch (error) {
+      console.error('Erro ao gerar tradição:', error);
+      toast.error(`Erro ao gerar tradição: ${error.message}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [unifiedPromptIntegration, addWorldItem]);
 
   // Função para gerar região com IA
   const generateRegion = useCallback(async () => {
-    await processGeneratedElement('region', 'regions');
-  }, [processGeneratedElement]);
+    if (!unifiedPromptIntegration) {
+      toast.error('Sistema de IA não inicializado');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const result = await unifiedPromptIntegration.generateRegion();
+      
+      if (result) {
+        addWorldItem('regions', result);
+        toast.success(`Região "${result.name}" gerada com sucesso!`);
+      }
+    } catch (error) {
+      console.error('Erro ao gerar região:', error);
+      toast.error(`Erro ao gerar região: ${error.message}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [unifiedPromptIntegration, addWorldItem]);
 
   // Função para gerar marco com IA
   const generateLandmark = useCallback(async () => {
-    await processGeneratedElement('landmark', 'landmarks');
-  }, [processGeneratedElement]);
+    if (!unifiedPromptIntegration) {
+      toast.error('Sistema de IA não inicializado');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const result = await unifiedPromptIntegration.generateLandmark();
+      
+      if (result) {
+        addWorldItem('landmarks', result);
+        toast.success(`Marco "${result.name}" gerado com sucesso!`);
+      }
+    } catch (error) {
+      console.error('Erro ao gerar marco:', error);
+      toast.error(`Erro ao gerar marco: ${error.message}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [unifiedPromptIntegration, addWorldItem]);
 
   // Função para gerar recurso com IA
   const generateResource = useCallback(async () => {
-    await processGeneratedElement('resource', 'resources');
-  }, [processGeneratedElement]);
+    if (!unifiedPromptIntegration) {
+      toast.error('Sistema de IA não inicializado');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const result = await unifiedPromptIntegration.generateResource();
+      
+      if (result) {
+        addWorldItem('resources', result);
+        toast.success(`Recurso "${result.name}" gerado com sucesso!`);
+      }
+    } catch (error) {
+      console.error('Erro ao gerar recurso:', error);
+      toast.error(`Erro ao gerar recurso: ${error.message}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [unifiedPromptIntegration, addWorldItem]);
 
   // Função para gerar tecnologia com IA
   const generateTechnology = useCallback(async () => {
-    await processGeneratedElement('technology', 'technologies');
-  }, [processGeneratedElement]);
+    if (!unifiedPromptIntegration) {
+      toast.error('Sistema de IA não inicializado');
+      return;
+    }
 
-  // Função antiga de tecnologia (mantida para compatibilidade)
-  const generateTechnologyOld = useCallback(async () => {
-    const prompt = `Crie uma tecnologia única para uma light novel.
-
-REGRAS IMPORTANTES:
-1. Responda APENAS com um JSON válido
-2. NÃO inclua texto explicativo antes ou depois do JSON
-3. NÃO use markdown ou blocos de código
-4. Use aspas duplas para strings
-5. Escape caracteres especiais nas strings
-
-Inclua:
-- Nome da tecnologia
-- Nível tecnológico (ex: Medieval, Renascentista, Industrial, Futurista)
-- Descrição detalhada de como funciona
-- Principais aplicações e usos
-- Impacto na sociedade
-
-Formato exato:
-{
-  "name": "Nome da Tecnologia",
-  "level": "Nível Tecnológico",
-  "description": "Descrição detalhada",
-  "applications": "Aplicações e usos",
-  "impact": "Impacto na sociedade"
-}`;
-
-    const context = {
-      worldName: worldData?.name,
-      existingTechnologies: worldData?.technologies || [],
-    };
-    
-    const result = await generateWithAI('technology', prompt, context);
-
-    if (result) {
-      try {
-        const cleanResult = cleanAIResponse(result);
-        if (!cleanResult) {
-          throw new Error('Resposta da IA não pôde ser limpa');
-        }
-        const techData = JSON.parse(cleanResult);
-        console.log('Tecnologia gerada:', techData);
-        addWorldItem('technologies', techData);
-        toast.success(`Tecnologia "${techData.name}" gerada com sucesso!`);
-      } catch (parseError) {
-        console.error('Erro ao parsear JSON:', parseError);
-        console.log('Resposta original:', result);
-        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
-        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
-        const levelMatch = result.match(/"level":\s*"([^"]+)"/);
-        if (nameMatch && descriptionMatch) {
-          const techData = {
-            id: Date.now(),
-            name: nameMatch[1],
-            level: levelMatch ? levelMatch[1] : 'Avançado',
-            description: descriptionMatch[1],
-            applications: 'Múltiplas aplicações',
-            impact: 'Impacto significativo na sociedade',
-            createdAt: new Date().toISOString(),
-            generatedBy: aiProvider
-          };
-          addWorldItem('technologies', techData);
-          toast.success(`Tecnologia "${techData.name}" gerada com sucesso!`);
-        } else {
-        toast.error('A IA retornou um formato inválido.');
+    setIsGenerating(true);
+    try {
+      const result = await unifiedPromptIntegration.generateTechnology();
+      
+      if (result) {
+        addWorldItem('technologies', result);
+        toast.success(`Tecnologia "${result.name}" gerada com sucesso!`);
       }
+    } catch (error) {
+      console.error('Erro ao gerar tecnologia:', error);
+      toast.error(`Erro ao gerar tecnologia: ${error.message}`);
+    } finally {
+      setIsGenerating(false);
     }
-    }
-  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
+  }, [unifiedPromptIntegration, addWorldItem]);
 
-  // Função para gerar governo com IA
+  // Função para gerar governo com IA usando Unified Prompt Integration
   const generateGovernment = useCallback(async () => {
-    const prompt = `Crie um sistema político/governo único para uma light novel.
+    if (!unifiedPromptIntegration) {
+      toast.error('Sistema de IA não inicializado');
+      return;
+    }
 
-REGRAS IMPORTANTES:
-1. Responda APENAS com um JSON válido
-2. NÃO inclua texto explicativo antes ou depois do JSON
-3. NÃO use markdown ou blocos de código
-4. Use aspas duplas para strings
-5. Escape caracteres especiais nas strings
-
-Inclua:
-- Nome do governo (ex: Império de Eldoria)
-- Tipo de governo (ex: Monarquia, República, Teocracia)
-- Descrição da estrutura de poder
-- Título do líder (ex: Imperador, Presidente, Sumo Sacerdote)
-- Leis e ideologias principais
-
-Formato exato:
-{
-  "name": "Nome do Governo",
-  "type": "Tipo de Governo",
-  "description": "Estrutura de poder",
-  "leaderTitle": "Título do Líder",
-  "laws": "Leis e ideologias"
-}`;
-
-    const context = {
-      worldName: worldData?.name,
-      existingGovernments: worldData?.governments || [],
-      peoples: worldData?.peoples || [],
-      regions: worldData?.regions || [],
-    };
-    
-    const result = await generateWithAI('government', prompt, context);
-
-    if (result) {
-      try {
-        const cleanResult = cleanAIResponse(result);
-        if (!cleanResult) {
-          throw new Error('Resposta da IA não pôde ser limpa');
-        }
-        const govData = JSON.parse(cleanResult);
-        console.log('Governo gerado:', govData);
-        addWorldItem('governments', govData);
-        toast.success(`Sistema político "${govData.name}" gerado com sucesso!`);
-      } catch (parseError) {
-        console.error('Erro ao parsear JSON:', parseError);
-        console.log('Resposta original:', result);
-        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
-        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
-        const typeMatch = result.match(/"type":\s*"([^"]+)"/);
-        if (nameMatch && descriptionMatch) {
-          const govData = {
-            id: Date.now(),
-            name: nameMatch[1],
-            type: typeMatch ? typeMatch[1] : 'Monarquia',
-            description: descriptionMatch[1],
-            leaderTitle: 'Líder Supremo',
-            laws: 'Leis e regulamentos estabelecidos',
-            createdAt: new Date().toISOString(),
-            generatedBy: aiProvider
-          };
-          addWorldItem('governments', govData);
-          toast.success(`Sistema político "${govData.name}" gerado com sucesso!`);
-        } else {
-        toast.error('A IA retornou um formato inválido.');
+    setIsGenerating(true);
+    try {
+      const result = await unifiedPromptIntegration.generateGovernment();
+      
+      if (result) {
+        addWorldItem('governments', result);
+        toast.success(`Sistema político "${result.name}" gerado com sucesso!`);
       }
+    } catch (error) {
+      console.error('Erro ao gerar governo:', error);
+      toast.error(`Erro ao gerar governo: ${error.message}`);
+    } finally {
+      setIsGenerating(false);
     }
-    }
-  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
+  }, [unifiedPromptIntegration, addWorldItem]);
 
-  // Função para gerar economia com IA
+  // Função para gerar economia com IA usando Unified Prompt Integration
   const generateEconomy = useCallback(async () => {
-    // Usa generateSmartElement para gerar economia com contexto completo
-    const result = await generateSmartElement('economy', worldData, { volumes, chapters, characters });
-
-    if (result) {
-      try {
-        const cleanResult = cleanAIResponse(result);
-        if (!cleanResult) {
-          throw new Error('Resposta da IA não pôde ser limpa');
-        }
-        const ecoData = JSON.parse(cleanResult);
-        console.log('Economia gerada:', ecoData);
-        addWorldItem('economies', ecoData);
-        toast.success(`Sistema econômico "${ecoData.name}" gerado com sucesso!`);
-      } catch (parseError) {
-        console.error('Erro ao parsear JSON:', parseError);
-        console.log('Resposta original:', result);
-        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
-        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
-        const currencyMatch = result.match(/"currency":\s*"([^"]+)"/);
-        if (nameMatch && descriptionMatch) {
-          const ecoData = {
-            id: Date.now(),
-            name: nameMatch[1],
-            description: descriptionMatch[1],
-            currency: currencyMatch ? currencyMatch[1] : 'Moeda Local',
-            mainExports: 'Produtos locais',
-            wealthDistribution: 'Distribuição equilibrada',
-            createdAt: new Date().toISOString(),
-            generatedBy: aiProvider
-          };
-          addWorldItem('economies', ecoData);
-          toast.success(`Sistema econômico "${ecoData.name}" gerado com sucesso!`);
-        } else {
-        toast.error('A IA retornou um formato inválido.');
-              }
-      }
+    if (!unifiedPromptIntegration) {
+      toast.error('Sistema de IA não inicializado');
+      return;
     }
-  }, [generateSmartElement, cleanAIResponse, worldData, volumes, chapters, characters, addWorldItem, aiProvider]);
+
+    setIsGenerating(true);
+    try {
+      const result = await unifiedPromptIntegration.generateEconomy();
+      
+      if (result) {
+        addWorldItem('economies', result);
+        toast.success(`Sistema econômico "${result.name}" gerado com sucesso!`);
+      }
+    } catch (error) {
+      console.error('Erro ao gerar economia:', error);
+      toast.error(`Erro ao gerar economia: ${error.message}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [unifiedPromptIntegration, addWorldItem]);
 
   // Função para geração em lote
   const generateBatch = useCallback(async (type, count = 5) => {
@@ -1130,125 +657,35 @@ Formato exato:
     return results;
   }, [generateLocation, addLocation]);
 
-  // Função para gerar informações básicas com IA
+  // Função para gerar informações básicas com IA usando Unified Prompt Integration
   const handleGenerateBasicInfo = useCallback(async () => {
-    const prompt = `Crie informações básicas completas para um mundo de light novel. Inclua:
+    if (!unifiedPromptIntegration) {
+      toast.error('Sistema de IA não inicializado');
+      return;
+    }
 
-- Nome do mundo (criativo e memorável)
-- Descrição geral detalhada (atmosfera, características principais, história geral)
-- Gênero apropriado (fantasy, sci-fi, urban-fantasy, historical, modern, post-apocalyptic, steampunk, cyberpunk)
-- Nível tecnológico (stone-age, bronze-age, iron-age, medieval, renaissance, industrial, modern, futuristic)
-
-Considere criar um mundo único com:
-- Elementos distintivos que o tornem memorável
-- Atmosfera envolvente para uma light novel
-- Possibilidades de narrativas interessantes
-- Aspectos culturais e sociais ricos
-
-REGRAS IMPORTANTES:
-1. Responda APENAS com um JSON válido
-2. NÃO inclua texto explicativo antes ou depois do JSON
-3. NÃO use markdown ou blocos de código
-4. Use aspas duplas para strings
-5. Escape caracteres especiais nas strings
-
-Formato exato:
-{
-  "name": "Nome do Mundo",
-  "description": "Descrição detalhada do mundo...",
-  "genre": "fantasy",
-  "techLevel": "medieval"
-}`;
-
-    const context = {
-      worldName: worldData?.name || 'Novo Mundo',
-      existingElements: [],
-      characters: characters?.slice(0, 3) || []
-    };
-
-    const result = await generateWithAI('basicInfo', prompt, context);
-    
-    if (result) {
-      try {
-        // Limpar o resultado usando a função utilitária
-        const cleanResult = cleanAIResponse(result);
-        
-        if (!cleanResult) {
-          throw new Error('Resposta da IA está vazia ou inválida');
-        }
-        
-        // Tentar fazer parse do JSON
-        const parsedResult = JSON.parse(cleanResult);
-        
-        console.log('AI Response parsed:', parsedResult); // Debug log
-        
+    setIsGenerating(true);
+    try {
+      const result = await unifiedPromptIntegration.generateBasicInfo();
+      
+      if (result) {
         // Atualizar as informações básicas
         updateWorldData({
-          name: parsedResult.name || worldData?.name || '',
-          description: parsedResult.description || worldData?.description || '',
-          genre: parsedResult.genre || worldData?.genre || '',
-          techLevel: parsedResult.techLevel || worldData?.techLevel || ''
+          name: result.name || worldData?.name || '',
+          description: result.description || worldData?.description || '',
+          genre: result.genre || worldData?.genre || '',
+          techLevel: result.techLevel || worldData?.techLevel || ''
         });
         
         toast.success('Informações básicas geradas com sucesso!');
-      } catch (parseError) {
-        console.error('Erro ao fazer parse do JSON:', parseError);
-        console.log('Resultado bruto da IA:', result);
-        
-        // Tentar extrair informações usando regex como fallback
-        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
-        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
-        const genreMatch = result.match(/"genre":\s*"([^"]+)"/);
-        const techLevelMatch = result.match(/"techLevel":\s*"([^"]+)"/);
-        
-        if (nameMatch || descriptionMatch || genreMatch || techLevelMatch) {
-          updateWorldData({
-            name: nameMatch?.[1] || worldData?.name || '',
-            description: descriptionMatch?.[1] || worldData?.description || '',
-            genre: genreMatch?.[1] || worldData?.genre || '',
-            techLevel: techLevelMatch?.[1] || worldData?.techLevel || ''
-          });
-          toast.success('Informações básicas extraídas com sucesso!');
-        } else {
-          // Tentar uma abordagem mais flexível - procurar por padrões no texto
-          const lines = result.split('\n');
-          let extractedName = '';
-          let extractedDescription = '';
-          let extractedGenre = '';
-          let extractedTechLevel = '';
-          
-          for (const line of lines) {
-            const trimmedLine = line.trim();
-            if (trimmedLine.toLowerCase().includes('nome') && !extractedName) {
-              extractedName = trimmedLine.replace(/^.*?[:：]\s*/, '').trim();
-            } else if (trimmedLine.toLowerCase().includes('descrição') || trimmedLine.toLowerCase().includes('description')) {
-              extractedDescription = trimmedLine.replace(/^.*?[:：]\s*/, '').trim();
-            } else if (trimmedLine.toLowerCase().includes('gênero') || trimmedLine.toLowerCase().includes('genre')) {
-              extractedGenre = trimmedLine.replace(/^.*?[:：]\s*/, '').trim();
-            } else if (trimmedLine.toLowerCase().includes('tecnológico') || trimmedLine.toLowerCase().includes('tech')) {
-              extractedTechLevel = trimmedLine.replace(/^.*?[:：]\s*/, '').trim();
-            }
-          }
-          
-          if (extractedName || extractedDescription || extractedGenre || extractedTechLevel) {
-            updateWorldData({
-              name: extractedName || worldData?.name || '',
-              description: extractedDescription || worldData?.description || '',
-              genre: extractedGenre || worldData?.genre || '',
-              techLevel: extractedTechLevel || worldData?.techLevel || ''
-            });
-            toast.success('Informações básicas extraídas com sucesso!');
-          } else {
-            // Se não conseguir extrair nada, usar o texto como descrição
-            updateWorldData({
-              description: result
-            });
-            toast.success('Descrição do mundo gerada com sucesso!');
-          }
-        }
       }
+    } catch (error) {
+      console.error('Erro ao gerar informações básicas:', error);
+      toast.error(`Erro ao gerar informações básicas: ${error.message}`);
+    } finally {
+      setIsGenerating(false);
     }
-  }, [generateWithAI, cleanAIResponse, worldData, characters, updateWorldData]);
+  }, [unifiedPromptIntegration, worldData, updateWorldData]);
 
   // Função para obter dados da aba atual
   const getCurrentTabData = useCallback(() => {
@@ -1636,7 +1073,9 @@ Formato exato:
                     {locationTypes.find(t => t.value === location.type)?.label || location.type}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 line-clamp-2">{location.description}</p>
+                <p className="text-sm text-gray-600 line-clamp-2">
+                  {typeof location.description === 'string' ? location.description : 'Descrição não disponível'}
+                </p>
                 {location.generatedBy && (
                   <div className="mt-2 flex items-center text-xs text-purple-600">
                     <Sparkles className="h-3 w-3 mr-1" />
@@ -1653,13 +1092,13 @@ Formato exato:
                 <p className="text-muted-foreground mb-6">Crie locais, culturas e sistemas para dar vida à sua história</p>
             <div className="flex justify-center space-x-3">
               <button 
-                onClick={() => setActiveTab('geography')}
+                onClick={() => setActiveTabWithSubTab('geography')}
                 className="btn-primary"
               >
                 Adicionar Local
               </button>
               <button 
-                onClick={() => setActiveTab('cultures')}
+                onClick={() => setActiveTabWithSubTab('cultures')}
                 className="btn-outline"
               >
                 Criar Cultura
@@ -1686,7 +1125,7 @@ Formato exato:
               type="text"
               placeholder="Buscar locais..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => setSearchTermWithUrl(e.target.value)}
               className="pl-10 pr-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-background text-foreground"
             />
           </div>
@@ -1694,7 +1133,7 @@ Formato exato:
           {/* Filtro por tipo */}
           <select
             value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
+            onChange={(e) => setFilterTypeWithUrl(e.target.value)}
             className="border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-background text-foreground"
           >
             <option value="all">Todos os tipos</option>
@@ -1708,8 +1147,7 @@ Formato exato:
             value={`${sortBy}-${sortOrder}`}
             onChange={(e) => {
               const [field, order] = e.target.value.split('-');
-              setSortBy(field);
-              setSortOrder(order);
+              setSortWithUrl(field, order);
             }}
             className="border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-background text-foreground"
           >
@@ -1725,13 +1163,13 @@ Formato exato:
           {/* Modo de visualização */}
           <div className="flex items-center border border-border rounded-lg">
             <button
-              onClick={() => setViewMode('grid')}
+              onClick={() => setViewModeWithUrl('grid')}
               className={`p-2 ${viewMode === 'grid' ? 'bg-muted' : ''}`}
             >
               <Grid className="h-4 w-4" />
             </button>
             <button
-              onClick={() => setViewMode('list')}
+              onClick={() => setViewModeWithUrl('list')}
               className={`p-2 ${viewMode === 'list' ? 'bg-muted' : ''}`}
             >
               <List className="h-4 w-4" />
@@ -1870,19 +1308,19 @@ Formato exato:
         </div>
 
         <p className={`text-gray-600 text-sm leading-relaxed ${isExpanded ? '' : 'line-clamp-3'}`}>
-          {location.description}
+          {typeof location.description === 'string' ? location.description : 'Descrição não disponível'}
         </p>
 
         {isExpanded && (
           <div className="mt-4 space-y-3 animate-slide-up">
-            {location.climate && (
+            {location.climate && typeof location.climate === 'string' && (
               <div className="flex items-center text-sm">
                 <Sun className="h-4 w-4 text-orange-500 mr-2" />
                 <span className="text-gray-600">Clima: {location.climate}</span>
               </div>
             )}
             
-            {location.population && (
+            {location.population && typeof location.population === 'string' && (
               <div className="flex items-center text-sm">
                 <Users className="h-4 w-4 text-blue-500 mr-2" />
                 <span className="text-gray-600">População: {location.population}</span>
@@ -1896,12 +1334,15 @@ Formato exato:
                   {location.pointsOfInterest.map((point, index) => (
                     <li key={index} className="flex items-center">
                       <Star className="h-3 w-3 text-yellow-500 mr-2 flex-shrink-0" />
-                      {point}
+                      {typeof point === 'string' ? point : JSON.stringify(point)}
                     </li>
                   ))}
                 </ul>
               </div>
             )}
+
+            {/* Renderizar campos que podem ser objetos */}
+            {renderObjectFields(location)}
           </div>
         )}
 
@@ -1957,7 +1398,9 @@ Formato exato:
                 </span>
               )}
             </div>
-            <p className="text-gray-600 text-sm truncate mt-1">{location.description}</p>
+            <p className="text-gray-600 text-sm truncate mt-1">
+              {typeof location.description === 'string' ? location.description : 'Descrição não disponível'}
+            </p>
           </div>
         </div>
 
@@ -2063,29 +1506,32 @@ Formato exato:
               </div>
               
               <p className="text-muted-foreground text-sm line-clamp-3 mb-4">
-                {region.description}
+                {renderDescription(region.description)}
               </p>
 
-              {region.climate && (
+              {region.climate && typeof region.climate === 'string' && (
                 <div className="mb-2">
                   <span className="text-xs font-medium text-muted-foreground">Clima:</span>
                   <p className="text-sm text-foreground">{region.climate}</p>
                 </div>
               )}
 
-              {region.terrain && (
+              {region.terrain && typeof region.terrain === 'string' && (
                 <div className="mb-2">
                   <span className="text-xs font-medium text-muted-foreground">Terreno:</span>
                   <p className="text-sm text-foreground">{region.terrain}</p>
                 </div>
               )}
 
-              {region.population && (
+              {region.population && typeof region.population === 'string' && (
                 <div>
                   <span className="text-xs font-medium text-muted-foreground">População:</span>
                   <p className="text-sm text-foreground">{region.population}</p>
                 </div>
               )}
+
+              {/* Renderizar campos que podem ser objetos */}
+              {renderObjectFields(region)}
             </div>
           ))}
         </div>
@@ -2172,10 +1618,10 @@ Formato exato:
               </div>
               
               <p className="text-muted-foreground text-sm line-clamp-3 mb-4">
-                {landmark.description}
+                {renderDescription(landmark.description)}
               </p>
 
-              {landmark.type && (
+              {landmark.type && typeof landmark.type === 'string' && (
                 <div className="mb-2">
                   <span className="inline-block px-2 py-1 bg-primary-100 text-primary-800 text-xs rounded">
                     {landmark.type}
@@ -2183,19 +1629,22 @@ Formato exato:
                 </div>
               )}
 
-              {landmark.significance && (
+              {landmark.significance && typeof landmark.significance === 'string' && (
                 <div className="mb-2">
                   <span className="text-xs font-medium text-muted-foreground">Importância:</span>
                   <p className="text-sm text-foreground line-clamp-2">{landmark.significance}</p>
                 </div>
               )}
 
-              {landmark.location && (
+              {landmark.location && typeof landmark.location === 'string' && (
                 <div>
                   <span className="text-xs font-medium text-muted-foreground">Localização:</span>
                   <p className="text-sm text-foreground">{landmark.location}</p>
                 </div>
               )}
+
+              {/* Renderizar campos que podem ser objetos */}
+              {renderObjectFields(landmark)}
             </div>
           ))}
         </div>
@@ -2282,7 +1731,7 @@ Formato exato:
               </div>
               
               <p className="text-muted-foreground text-sm line-clamp-3 mb-4">
-                {resource.description}
+                {renderDescription(resource.description)}
               </p>
 
               {resource.type && (
@@ -2328,7 +1777,7 @@ Formato exato:
               type="text"
               placeholder="Buscar culturas..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => setSearchTermWithUrl(e.target.value)}
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
             />
           </div>
@@ -2336,7 +1785,7 @@ Formato exato:
           {/* Filtro por tipo */}
           <select
             value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
+            onChange={(e) => setFilterTypeWithUrl(e.target.value)}
             className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
           >
             <option value="all">Todos os tipos</option>
@@ -2350,8 +1799,7 @@ Formato exato:
             value={`${sortBy}-${sortOrder}`}
             onChange={(e) => {
               const [field, order] = e.target.value.split('-');
-              setSortBy(field);
-              setSortOrder(order);
+              setSortWithUrl(field, order);
             }}
             className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
           >
@@ -2382,13 +1830,13 @@ Formato exato:
           {/* Modo de visualização */}
           <div className="flex items-center border border-gray-300 rounded-lg">
             <button
-              onClick={() => setViewMode('grid')}
+              onClick={() => setViewModeWithUrl('grid')}
               className={`p-2 ${viewMode === 'grid' ? 'bg-gray-100' : ''}`}
             >
               <Grid className="h-4 w-4" />
             </button>
             <button
-              onClick={() => setViewMode('list')}
+              onClick={() => setViewModeWithUrl('list')}
               className={`p-2 ${viewMode === 'list' ? 'bg-gray-100' : ''}`}
             >
               <List className="h-4 w-4" />
@@ -2499,7 +1947,7 @@ Formato exato:
           </div>
         </div>
         <p className={`text-gray-600 text-sm leading-relaxed line-clamp-3`}>
-          {people.description}
+          {renderDescription(people.description)}
         </p>
       </div>
     );
@@ -2584,7 +2032,7 @@ Formato exato:
               </div>
               
               <p className="text-gray-600 text-sm line-clamp-3 mb-4">
-                {language.description}
+                {renderDescription(language.description)}
               </p>
 
               {language.family && (
@@ -2693,7 +2141,7 @@ Formato exato:
               </div>
               
               <p className="text-gray-600 text-sm line-clamp-3 mb-4">
-                {religion.description}
+                {renderDescription(religion.description)}
               </p>
 
               {religion.deities && (
@@ -2802,7 +2250,7 @@ Formato exato:
               </div>
               
               <p className="text-gray-600 text-sm line-clamp-3 mb-4">
-                {tradition.description}
+                {renderDescription(tradition.description)}
               </p>
 
               {tradition.type && (
@@ -2926,22 +2374,33 @@ Formato exato:
               </div>
               
               <p className="text-gray-600 text-sm line-clamp-3 mb-4">
-                {system.description}
+                {typeof system.description === 'string' ? system.description : 'Descrição não disponível'}
               </p>
 
-              {system.source && (
+              {system.source && typeof system.source === 'string' && (
                 <div className="mb-2">
                   <span className="text-xs font-medium text-gray-500">Fonte:</span>
                   <p className="text-sm text-gray-700 line-clamp-2">{system.source}</p>
                 </div>
               )}
 
-              {system.limitations && (
+              {system.limitations && typeof system.limitations === 'string' && (
                 <div>
                   <span className="text-xs font-medium text-gray-500">Limitações:</span>
                   <p className="text-sm text-gray-700 line-clamp-2">{system.limitations}</p>
                 </div>
               )}
+
+              {/* Renderizar campos que podem ser objetos */}
+              {system.rules && typeof system.rules === 'string' && (
+                <div className="mb-2">
+                  <span className="text-xs font-medium text-gray-500">Regras:</span>
+                  <p className="text-sm text-gray-700 line-clamp-2">{system.rules}</p>
+                </div>
+              )}
+
+              {/* Renderizar campos que podem ser objetos */}
+              {renderObjectFields(system)}
             </div>
           ))}
         </div>
@@ -3028,7 +2487,7 @@ Formato exato:
               </div>
               
               <p className="text-gray-600 text-sm line-clamp-3 mb-4">
-                {tech.description}
+                {renderDescription(tech.description)}
               </p>
 
               {tech.level && (
@@ -3131,7 +2590,7 @@ Formato exato:
               </div>
               
               <p className="text-gray-600 text-sm line-clamp-3 mb-4">
-                {gov.description}
+                {renderDescription(gov.description)}
               </p>
 
               {gov.type && (
@@ -3234,7 +2693,7 @@ Formato exato:
               </div>
               
               <p className="text-gray-600 text-sm line-clamp-3 mb-4">
-                {eco.description}
+                {renderDescription(eco.description)}
               </p>
 
               {eco.currency && (
@@ -3307,7 +2766,7 @@ Formato exato:
                   <div className="flex-1">
                     <p className="font-bold text-lg text-red-700">{event.year || 'Data Indefinida'}</p>
                     <h4 className="font-semibold text-xl text-gray-900 mb-2">{event.name}</h4>
-                    <p className="text-gray-600 line-clamp-3">{event.description}</p>
+                    <p className="text-gray-600 line-clamp-3">{renderDescription(event.description)}</p>
                     {event.type && (
                       <span className="inline-block mt-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
                         {event.type}
@@ -3499,8 +2958,8 @@ Formato exato:
                 <div className="flex justify-center space-x-2">
                   <button 
                     onClick={() => {
-                      setActiveTab('cultures');
-                      setActiveSubTab('peoples');
+                      setActiveTabWithSubTab('cultures');
+                      setActiveSubTabWithUrl('peoples');
                     }}
                     className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded hover:bg-green-200"
                   >
@@ -3508,8 +2967,8 @@ Formato exato:
                   </button>
                   <button 
                     onClick={() => {
-                      setActiveTab('geography');
-                      setActiveSubTab('locations');
+                      setActiveTabWithSubTab('geography');
+                      setActiveSubTabWithUrl('locations');
                     }}
                     className="text-sm bg-yellow-100 text-yellow-700 px-3 py-1 rounded hover:bg-yellow-200"
                   >
@@ -3756,7 +3215,7 @@ Formato exato:
         activeTab={activeTab}
         activeSubTab={activeSubTab}
         onTabChange={setActiveTabWithSubTab}
-        onSubTabChange={setActiveSubTab}
+        onSubTabChange={setActiveSubTabWithUrl}
         worldData={worldData}
       />
       
@@ -3814,6 +3273,9 @@ Formato exato:
         </div>
         </div>
 
+        {/* Componente de teste de navegação */}
+        <NavigationTest />
+        
         {/* Conteúdo principal */}
         {renderMainContent()}
         </div>
@@ -3841,7 +3303,7 @@ Formato exato:
           }}
           aiProvider={aiProvider}
           isGenerating={isGenerating}
-          onGenerateWithAI={generateWithAI}
+          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateLocation.bind(unifiedPromptIntegration) : null}
         />
       )}
 
@@ -3869,7 +3331,7 @@ Formato exato:
           }}
           aiProvider={aiProvider}
           isGenerating={isGenerating}
-          onGenerateWithAI={generateWithAI}
+          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generatePeople.bind(unifiedPromptIntegration) : null}
         />
       )}
 
@@ -3881,7 +3343,7 @@ Formato exato:
           onDelete={(id) => handleDelete('magicSystems', id)}
           aiProvider={aiProvider}
           isGenerating={isGenerating}
-          onGenerateWithAI={generateWithAI}
+          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateMagicSystem.bind(unifiedPromptIntegration) : null}
         />
       )}
 
@@ -3893,7 +3355,7 @@ Formato exato:
           onDelete={(id) => handleDelete('events', id)}
           aiProvider={aiProvider}
           isGenerating={isGenerating}
-          onGenerateWithAI={generateWithAI}
+          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateEvent.bind(unifiedPromptIntegration) : null}
         />
       )}
 
@@ -3905,7 +3367,7 @@ Formato exato:
           onDelete={(id) => handleDelete('languages', id)}
           aiProvider={aiProvider}
           isGenerating={isGenerating}
-          onGenerateWithAI={generateWithAI}
+          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateLanguage.bind(unifiedPromptIntegration) : null}
         />
       )}
 
@@ -3917,7 +3379,7 @@ Formato exato:
           onDelete={(id) => handleDelete('religions', id)}
           aiProvider={aiProvider}
           isGenerating={isGenerating}
-          onGenerateWithAI={generateWithAI}
+          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateReligion.bind(unifiedPromptIntegration) : null}
         />
       )}
 
@@ -3929,7 +3391,7 @@ Formato exato:
           onDelete={(id) => handleDelete('traditions', id)}
           aiProvider={aiProvider}
           isGenerating={isGenerating}
-          onGenerateWithAI={generateWithAI}
+          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateTradition.bind(unifiedPromptIntegration) : null}
         />
       )}
 
@@ -3941,7 +3403,7 @@ Formato exato:
           onDelete={(id) => handleDelete('regions', id)}
           aiProvider={aiProvider}
           isGenerating={isGenerating}
-          onGenerateWithAI={generateWithAI}
+          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateRegion.bind(unifiedPromptIntegration) : null}
         />
       )}
 
@@ -3953,7 +3415,7 @@ Formato exato:
           onDelete={(id) => handleDelete('landmarks', id)}
           aiProvider={aiProvider}
           isGenerating={isGenerating}
-          onGenerateWithAI={generateWithAI}
+          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateLandmark.bind(unifiedPromptIntegration) : null}
         />
       )}
 
@@ -3965,7 +3427,7 @@ Formato exato:
           onDelete={(id) => handleDelete('resources', id)}
           aiProvider={aiProvider}
           isGenerating={isGenerating}
-          onGenerateWithAI={generateWithAI}
+          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateResource.bind(unifiedPromptIntegration) : null}
         />
       )}
 
@@ -3977,7 +3439,7 @@ Formato exato:
           onDelete={(id) => handleDelete('technologies', id)}
           aiProvider={aiProvider}
           isGenerating={isGenerating}
-          onGenerateWithAI={generateWithAI}
+          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateTechnology.bind(unifiedPromptIntegration) : null}
         />
       )}
 
@@ -3989,7 +3451,7 @@ Formato exato:
           onDelete={(id) => handleDelete('governments', id)}
           aiProvider={aiProvider}
           isGenerating={isGenerating}
-          onGenerateWithAI={generateWithAI}
+          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateGovernment.bind(unifiedPromptIntegration) : null}
         />
       )}
 
@@ -4001,7 +3463,7 @@ Formato exato:
           onDelete={(id) => handleDelete('economies', id)}
           aiProvider={aiProvider}
           isGenerating={isGenerating}
-          onGenerateWithAI={generateWithAI}
+          onGenerateWithAI={unifiedPromptIntegration ? unifiedPromptIntegration.generateEconomy.bind(unifiedPromptIntegration) : null}
         />
       )}
 

@@ -69,6 +69,7 @@ const Layout = ({ children }) => {
   const navigation = [
     { name: 'Dashboard', href: '/', icon: BookOpen },
     { name: 'Editor', href: '/editor', icon: Edit3 },
+    { name: 'Gerenciador de Volumes', href: '/volume-manager', icon: Book },
     { name: 'Construtor de Mundo', href: '/world-builder', icon: Globe },
     { name: 'Gerador de Personagens', href: '/character-generator', icon: Users },
     { name: 'Gerador de Lore', href: '/lore-generator', icon: ScrollText },

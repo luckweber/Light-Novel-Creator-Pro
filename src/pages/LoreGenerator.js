@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ScrollText, 
   Plus, 
@@ -24,15 +24,16 @@ import {
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import toast from 'react-hot-toast';
-import { AIService, AI_PROMPTS } from '../utils/aiProviders';
+import { AIService } from '../utils/aiProviders';
+import { createUnifiedPromptIntegration } from '../utils/unifiedPromptIntegration';
 import AILoreGenModal from '../components/lore/AILoreGenModal';
 
 const LoreGenerator = () => {
   const { 
     loreData, 
     addLoreItem,
-    worldData, // Adicionar worldData
-    settings // Adicionar settings
+    worldData,
+    settings
   } = useStore();
 
   const [activeTab, setActiveTab] = useState('myths');
@@ -40,7 +41,8 @@ const LoreGenerator = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [showAIGenModal, setShowAIGenModal] = useState(false); // Novo estado
+  const [showAIGenModal, setShowAIGenModal] = useState(false);
+  const [unifiedPromptIntegration, setUnifiedPromptIntegration] = useState(null);
 
   const [loreForm, setLoreForm] = useState({
     name: '',
@@ -72,6 +74,21 @@ const LoreGenerator = () => {
     { value: 'staff', label: 'Cajado', icon: Zap },
     { value: 'mirror', label: 'Espelho', icon: Eye }
   ];
+
+  // Inicializar Unified Prompt Integration
+  useEffect(() => {
+    if (settings?.defaultAIProvider && settings?.aiProviders?.[settings.defaultAIProvider]) {
+      const activeProvider = settings.aiProviders[settings.defaultAIProvider];
+      const aiService = new AIService(settings.defaultAIProvider, activeProvider.apiKey, {
+        model: activeProvider.defaultModel,
+        temperature: activeProvider.temperature,
+        maxTokens: activeProvider.maxTokens
+      });
+      
+      const integration = createUnifiedPromptIntegration(worldData, aiService);
+      setUnifiedPromptIntegration(integration);
+    }
+  }, [settings, worldData]);
 
   const handleFormChange = (field, value) => {
     setLoreForm(prev => ({
@@ -135,118 +152,29 @@ const LoreGenerator = () => {
     }
   };
 
-  // Função para extrair dados de texto da IA (similar ao CharacterGenerator)
-  const extractLoreFromText = (text, loreType) => {
-    const data = {};
-    
-    // Extrai o nome/título - procura por padrões comuns
-    const titlePatterns = [
-      /\*\*([^*]+)\*\*\s*\n/,
-      /"([^"]+)"/,
-      /Mito[^:]*:\s*([^\n]+)/i,
-      /Lenda[^:]*:\s*([^\n]+)/i,
-      /Artefato[^:]*:\s*([^\n]+)/i,
-      /^([^\n]+)/m // Primeira linha como fallback
-    ];
-    
-    for (const pattern of titlePatterns) {
-      const match = text.match(pattern);
-      if (match && match[1] && match[1].trim().length > 3) {
-        data.name = match[1].trim().replace(/[*"]/g, ''); // Remove caracteres especiais
-        break;
-      }
-    }
-    
-    // Se não encontrou nome, usa um genérico baseado no tipo
-    if (!data.name) {
-      const typeNames = {
-        myths: 'Mito Gerado por IA',
-        legends: 'Lenda Gerada por IA',
-        artifacts: 'Artefato Gerado por IA',
-        prophecies: 'Profecia Gerada por IA',
-        rituals: 'Ritual Gerado por IA',
-        customs: 'Costume Gerado por IA'
-      };
-      data.name = typeNames[loreType] || 'Item de Lore Gerado por IA';
-    }
-    
-    // Usa todo o texto como descrição, limpando formatação
-    data.description = text
-      .replace(/\*\*[^*]+\*\*/g, '') // Remove títulos em bold
-      .replace(/#+\s*[^\n]+/g, '') // Remove headers
-      .replace(/\n\s*\n/g, '\n') // Remove linhas vazias extras
-      .trim();
-    
-    // Campos padrão para diferentes tipos de lore
-    if (loreType === 'artifacts') {
-      data.origin = 'Origem a ser descoberta';
-      data.effects = 'Efeitos mágicos ou especiais';
-    } else {
-      data.origin = 'Tradição oral antiga';
-      data.significance = 'Importante para a cultura e história local';
-    }
-    
-    return data;
-  };
-
   const generateFullLoreItem = async (prompt, loreType) => {
+    if (!unifiedPromptIntegration) {
+      toast.error('Sistema de IA não inicializado');
+      return;
+    }
+
     setIsGenerating(true);
     setShowAIGenModal(false);
     const toastId = toast.loading(`Gerando ${loreType}...`);
 
     try {
-      const activeProvider = settings.aiProviders[settings.defaultAIProvider];
-      if (!activeProvider || !activeProvider.apiKey) {
-        throw new Error('Provedor de IA não configurado corretamente.');
-      }
-      
-      const aiService = new AIService(settings.defaultAIProvider, activeProvider.apiKey, {
-        model: activeProvider.defaultModel,
-        temperature: activeProvider.temperature,
-        maxTokens: activeProvider.maxTokens
+      const result = await unifiedPromptIntegration.generateLoreItem(loreType, {
+        prompt,
+        worldData
       });
-
-      const worldContext = {
-        name: worldData.name,
-        genre: worldData.genre,
-        regions: worldData.regions.map(r => r.name),
-        peoples: worldData.peoples.map(p => p.name),
-        characters: useStore.getState().characters.map(c => c.name),
-        magicSystems: worldData.magicSystems.map(m => m.name)
-      };
-
-      let fullPrompt = AI_PROMPTS.lore[loreType] || `Crie um item de lore do tipo "${loreType}".`;
-      fullPrompt += `\n\nCONTEXTO DO MUNDO:\n${JSON.stringify(worldContext, null, 2)}`;
       
-      if (prompt) {
-        fullPrompt += `\n\nInstruções adicionais do usuário: ${prompt}`;
+      if (result) {
+        setLoreForm(prev => ({ ...prev, ...result }));
+        setActiveTab(loreType);
+        setShowForm(true);
+        setEditingItem(null);
+        toast.success('Item de lore gerado com sucesso!', { id: toastId });
       }
-
-      const result = await aiService.generateText(fullPrompt);
-      
-      // Extrair o JSON da resposta (mesma lógica do CharacterGenerator)
-      const jsonMatch = result.match(/\{[\s\S]*\}/);
-      let parsedResult;
-      
-      if (jsonMatch) {
-        try {
-          const jsonString = jsonMatch[0];
-          parsedResult = JSON.parse(jsonString);
-        } catch (e) {
-          // Se falhar no JSON, usa fallback
-          parsedResult = extractLoreFromText(result, loreType);
-        }
-      } else {
-        // Se não encontrar JSON, usa fallback
-        parsedResult = extractLoreFromText(result, loreType);
-      }
-      
-      setLoreForm(prev => ({ ...prev, ...parsedResult }));
-      setActiveTab(loreType);
-      setShowForm(true);
-      setEditingItem(null);
-      toast.success('Item de lore gerado com sucesso!', { id: toastId });
-
     } catch (error) {
       toast.error(`Erro ao gerar lore: ${error.message}`, { id: toastId });
     } finally {
