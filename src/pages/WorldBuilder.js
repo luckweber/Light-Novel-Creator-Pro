@@ -3273,9 +3273,6 @@ const WorldBuilder = () => {
         </div>
         </div>
 
-        {/* Componente de teste de navegação */}
-        <NavigationTest />
-        
         {/* Conteúdo principal */}
         {renderMainContent()}
         </div>
