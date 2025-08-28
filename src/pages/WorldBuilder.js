@@ -96,7 +96,8 @@ const WorldBuilder = () => {
     analyzeProject,
     generateElementPrompt,
     getQualityTips,
-    getVolumeInsights
+    getVolumeInsights,
+    generateSmartElement
   } = useAIAgent(aiProvider, settings);
   
   // Estados de filtro e busca
@@ -231,6 +232,93 @@ const WorldBuilder = () => {
     
     // Limpar espaços extras e quebras de linha
     cleaned = cleaned.replace(/\s+/g, ' ').trim();
+    
+    // Converter campos em português para inglês se necessário
+    const portugueseToEnglish = {
+      // Regiões
+      '"Nome da Região"': '"name"',
+      '"Tipo Geográfico"': '"type"',
+      '"Clima Predominante"': '"climate"',
+      '"Variações Sazonais"': '"seasonalVariations"',
+      '"Terreno e Topografia"': '"terrain"',
+      '"Recursos Naturais"': '"naturalResources"',
+      '"População Estimada"': '"population"',
+      '"Distribuição"': '"distribution"',
+      '"Principais Assentamentos e Cidades"': '"settlements"',
+      '"Rotas Comerciais e de Transporte"': '"tradeRoutes"',
+      '"Características Ambientais Únicas"': '"uniqueFeatures"',
+      '"Perigos Naturais ou Sobrenaturais"': '"dangers"',
+      '"Importância Estratégica ou Econômica"': '"strategicImportance"',
+      '"Conflitos Territoriais ou Disputas"': '"conflicts"',
+      '"Flora e Fauna Características"': '"floraFauna"',
+      '"Recursos Hídricos"': '"waterResources"',
+      '"Conectividade com Outras Regiões"': '"connectivity"',
+      
+      // Marcos/Landmarks
+      '"Nome do Marco"': '"name"',
+      '"Tipo do Marco"': '"type"',
+      '"Importância Histórica"': '"significance"',
+      '"Localização Específica"': '"location"',
+      '"Características Especiais"': '"features"',
+      '"Lendas Associadas"': '"legends"',
+      '"Como Acessar"': '"access"',
+      '"Perigos ou Desafios"': '"dangers"',
+      '"Impacto na Narrativa"': '"narrativeImpact"',
+      
+      // Idiomas/Languages
+      '"Nome do Idioma"': '"name"',
+      '"Família Linguística"': '"family"',
+      '"Principais Falantes"': '"speakers"',
+      '"Sistema de Escrita"': '"script"',
+      '"Exemplos de Palavras"': '"examples"',
+      '"Dialetos Regionais"': '"dialects"',
+      '"Influências Culturais"': '"culturalInfluence"',
+      '"Status Social"': '"socialStatus"',
+      '"Evolução Histórica"': '"evolution"',
+      
+      // Recursos/Resources
+      '"Nome do Recurso"': '"name"',
+      '"Tipo do Recurso"': '"type"',
+      '"Nível de Raridade"': '"rarity"',
+      '"Principais Usos"': '"uses"',
+      '"Onde é Encontrado"': '"location"',
+      '"Métodos de Extração"': '"extraction"',
+      '"Valor Econômico"': '"value"',
+      '"Propriedades Especiais"': '"properties"',
+      '"Impacto na Sociedade"': '"impact"',
+      
+      // Tradições/Traditions
+      '"Nome da Tradição"': '"name"',
+      '"Tipo da Tradição"': '"type"',
+      '"Origem Histórica"': '"origin"',
+      '"Como é Praticada"': '"practice"',
+      '"Significado Cultural"': '"meaning"',
+      '"Quem Participa"': '"participants"',
+      '"Quando Ocorre"': '"frequency"',
+      '"Elementos Simbólicos"': '"symbols"',
+      '"Variações Regionais"': '"variations"',
+      '"Importância Social"': '"importance"',
+      '"Evolução Histórica"': '"evolution"',
+      '"Conflitos ou Controvérsias"': '"conflicts"',
+      
+      // Campos gerais
+      '"Nome"': '"name"',
+      '"Tipo"': '"type"',
+      '"Descrição"': '"description"',
+      '"Clima"': '"climate"',
+      '"População"': '"population"',
+      '"Cultura"': '"culture"',
+      '"Governo"': '"government"',
+      '"Economia"': '"economy"',
+      '"Pontos de Interesse"': '"pointsOfInterest"',
+      '"Atmosfera"': '"atmosphere"',
+      '"Segredos"': '"secrets"'
+    };
+    
+    // Aplicar conversões
+    Object.entries(portugueseToEnglish).forEach(([portuguese, english]) => {
+      cleaned = cleaned.replace(new RegExp(portuguese, 'g'), english);
+    });
     
     return cleaned;
   }, []);
@@ -484,9 +572,9 @@ Formato exato:
           addWorldItem('peoples', peopleData);
           toast.success(`Povo "${peopleData.name}" gerado com sucesso!`);
         } else {
-          toast.error('A IA retornou um formato inválido.');
-        }
+        toast.error('A IA retornou um formato inválido.');
       }
+    }
     }
   }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
 
@@ -557,9 +645,9 @@ Formato exato:
           addWorldItem('events', eventData);
           toast.success(`Evento "${eventData.name}" gerado com sucesso!`);
         } else {
-          toast.error('A IA retornou um formato inválido.');
-        }
+        toast.error('A IA retornou um formato inválido.');
       }
+    }
     }
   }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
 
@@ -627,88 +715,121 @@ Formato exato:
           addWorldItem('magicSystems', systemData);
           toast.success(`Sistema "${systemData.name}" gerado com sucesso!`);
         } else {
-          toast.error('A IA retornou um formato inválido.');
-        }
+        toast.error('A IA retornou um formato inválido.');
       }
     }
+    }
   }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
+
+  // Função genérica para processar elementos gerados com contexto inteligente
+  const processGeneratedElement = useCallback(async (elementType, elementKey) => {
+    try {
+      const result = await generateSmartElement(elementType, worldData, { volumes, chapters, characters });
+      
+      if (result) {
+        try {
+          const cleanResult = cleanAIResponse(result);
+          if (!cleanResult) {
+            throw new Error('Resposta da IA não pôde ser limpa');
+          }
+          const elementData = JSON.parse(cleanResult);
+          console.log(`${elementType} gerado:`, elementData);
+          
+          // Verifica se já existe um elemento com o mesmo nome
+          const existingElements = worldData?.[elementKey] || [];
+          const isDuplicate = existingElements.some(existing => 
+            existing.name?.toLowerCase() === elementData.name?.toLowerCase()
+          );
+          
+          if (isDuplicate) {
+            toast.error(`Já existe um ${elementType} com o nome "${elementData.name}". Tentando gerar novamente...`);
+            // Tenta gerar novamente
+            return await processGeneratedElement(elementType, elementKey);
+          }
+          
+          // Adiciona timestamp e provedor
+          elementData.id = elementData.id || Date.now();
+          elementData.createdAt = elementData.createdAt || new Date().toISOString();
+          elementData.generatedBy = aiProvider;
+          
+          addWorldItem(elementKey, elementData);
+          toast.success(`${elementType} "${elementData.name}" gerado com sucesso!`);
+          return elementData;
+        } catch (parseError) {
+          console.error('Erro ao parsear JSON:', parseError);
+          console.log('Resposta original:', result);
+          
+          // Tenta extrair dados básicos com regex mais robusto
+          const nameMatch = result.match(/"name":\s*"([^"]+)"/) || 
+                           result.match(/"Nome da Região":\s*"([^"]+)"/) || 
+                           result.match(/"Nome do Marco":\s*"([^"]+)"/) || 
+                           result.match(/"Nome do Idioma":\s*"([^"]+)"/) || 
+                           result.match(/"Nome do Recurso":\s*"([^"]+)"/) || 
+                           result.match(/"Nome da Tradição":\s*"([^"]+)"/) || 
+                           result.match(/"Nome":\s*"([^"]+)"/);
+          const descriptionMatch = result.match(/"description":\s*"([^"]+)"/) || result.match(/"Descrição":\s*"([^"]+)"/);
+          const typeMatch = result.match(/"type":\s*"([^"]+)"/) || 
+                           result.match(/"Tipo Geográfico":\s*"([^"]+)"/) || 
+                           result.match(/"Tipo do Marco":\s*"([^"]+)"/) || 
+                           result.match(/"Tipo do Recurso":\s*"([^"]+)"/) || 
+                           result.match(/"Tipo da Tradição":\s*"([^"]+)"/) || 
+                           result.match(/"Tipo":\s*"([^"]+)"/);
+          const climateMatch = result.match(/"climate":\s*"([^"]+)"/) || result.match(/"Clima Predominante":\s*"([^"]+)"/) || result.match(/"Clima":\s*"([^"]+)"/);
+          const populationMatch = result.match(/"population":\s*"([^"]+)"/) || result.match(/"População Estimada":\s*"([^"]+)"/) || result.match(/"População":\s*"([^"]+)"/);
+          
+          if (nameMatch) {
+            const elementData = {
+              id: Date.now(),
+              name: nameMatch[1],
+              description: descriptionMatch ? descriptionMatch[1] : `Descrição da ${elementType}`,
+              type: typeMatch ? typeMatch[1] : 'Tipo não especificado',
+              climate: climateMatch ? climateMatch[1] : 'Clima não especificado',
+              population: populationMatch ? populationMatch[1] : 'População não especificada',
+              createdAt: new Date().toISOString(),
+              generatedBy: aiProvider
+            };
+            
+            // Verifica se já existe um elemento com o mesmo nome
+            const existingElements = worldData?.[elementKey] || [];
+            const isDuplicate = existingElements.some(existing => 
+              existing.name?.toLowerCase() === elementData.name?.toLowerCase()
+            );
+            
+            if (isDuplicate) {
+              toast.error(`Já existe um ${elementType} com o nome "${elementData.name}". Tentando gerar novamente...`);
+              // Tenta gerar novamente
+              return await processGeneratedElement(elementType, elementKey);
+            }
+            
+            addWorldItem(elementKey, elementData);
+            toast.success(`${elementType} "${elementData.name}" gerado com sucesso!`);
+            return elementData;
+          } else {
+            toast.error('A IA retornou um formato inválido.');
+            return null;
+          }
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error(`Erro ao gerar ${elementType}:`, error);
+      toast.error(`Erro ao gerar ${elementType}`);
+      return null;
+    }
+  }, [generateSmartElement, cleanAIResponse, worldData, volumes, chapters, characters, addWorldItem, aiProvider]);
 
   // Função para gerar idioma com IA
   const generateLanguage = useCallback(async () => {
-    const prompt = `Crie um idioma único para uma light novel.
-
-REGRAS IMPORTANTES:
-1. Responda APENAS com um JSON válido
-2. NÃO inclua texto explicativo antes ou depois do JSON
-3. NÃO use markdown ou blocos de código
-4. Use aspas duplas para strings
-5. Escape caracteres especiais nas strings
-
-Inclua:
-- Nome do idioma
-- Família linguística
-- Descrição das características
-- Principais falantes/povos
-- Sistema de escrita
-- Exemplos de palavras ou frases
-
-Formato exato:
-{
-  "name": "Nome do Idioma",
-  "family": "Família Linguística",
-  "description": "Descrição detalhada",
-  "speakers": "Principais falantes",
-  "script": "Sistema de escrita",
-  "examples": "Exemplos de palavras"
-}`;
-
-    const context = {
-      worldName: worldData?.name,
-      existingLanguages: worldData?.languages || [],
-      peoples: worldData?.peoples || []
-    };
-    
-    const result = await generateWithAI('language', prompt, context);
-
-    if (result) {
-      try {
-        const cleanResult = cleanAIResponse(result);
-        if (!cleanResult) {
-          throw new Error('Resposta da IA não pôde ser limpa');
-        }
-        const languageData = JSON.parse(cleanResult);
-        console.log('Idioma gerado:', languageData);
-        addWorldItem('languages', languageData);
-        toast.success(`Idioma "${languageData.name}" gerado com sucesso!`);
-      } catch (parseError) {
-        console.error('Erro ao parsear JSON:', parseError);
-        console.log('Resposta original:', result);
-        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
-        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
-        const familyMatch = result.match(/"family":\s*"([^"]+)"/);
-        if (nameMatch && descriptionMatch) {
-          const languageData = {
-            id: Date.now(),
-            name: nameMatch[1],
-            family: familyMatch ? familyMatch[1] : 'Linguística Única',
-            description: descriptionMatch[1],
-            speakers: 'Povos locais',
-            script: 'Sistema de escrita próprio',
-            examples: 'Palavras e frases únicas',
-            createdAt: new Date().toISOString(),
-            generatedBy: aiProvider
-          };
-          addWorldItem('languages', languageData);
-          toast.success(`Idioma "${languageData.name}" gerado com sucesso!`);
-        } else {
-          toast.error('A IA retornou um formato inválido.');
-        }
-      }
-    }
-  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
+    await processGeneratedElement('language', 'languages');
+  }, [processGeneratedElement]);
 
   // Função para gerar religião com IA
   const generateReligion = useCallback(async () => {
+    await processGeneratedElement('religion', 'religions');
+  }, [processGeneratedElement]);
+
+  // Função antiga de religião (mantida para compatibilidade)
+  const generateReligionOld = useCallback(async () => {
     const prompt = `Crie uma religião única para uma light novel.
 
 REGRAS IMPORTANTES:
@@ -775,312 +896,39 @@ Formato exato:
           addWorldItem('religions', religionData);
           toast.success(`Religião "${religionData.name}" gerada com sucesso!`);
         } else {
-          toast.error('A IA retornou um formato inválido.');
-        }
+        toast.error('A IA retornou um formato inválido.');
       }
+    }
     }
   }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
 
   // Função para gerar tradição com IA
   const generateTradition = useCallback(async () => {
-    const prompt = `Crie uma tradição cultural única para uma light novel.
-
-REGRAS IMPORTANTES:
-1. Responda APENAS com um JSON válido
-2. NÃO inclua texto explicativo antes ou depois do JSON
-3. NÃO use markdown ou blocos de código
-4. Use aspas duplas para strings
-5. Escape caracteres especiais nas strings
-
-Inclua:
-- Nome da tradição
-- Tipo (festival, ritual, costume, etc.)
-- Descrição detalhada
-- Origem histórica
-- Como é praticada
-- Frequência (anual, sazonal, etc.)
-
-Formato exato:
-{
-  "name": "Nome da Tradição",
-  "type": "Tipo da tradição",
-  "description": "Descrição detalhada",
-  "origin": "Origem histórica",
-  "practice": "Como é praticada",
-  "frequency": "Frequência"
-}`;
-
-    const context = {
-      worldName: worldData?.name,
-      existingTraditions: worldData?.traditions || [],
-      peoples: worldData?.peoples || [],
-      religions: worldData?.religions || []
-    };
-    
-    const result = await generateWithAI('tradition', prompt, context);
-
-    if (result) {
-      try {
-        const cleanResult = cleanAIResponse(result);
-        if (!cleanResult) {
-          throw new Error('Resposta da IA não pôde ser limpa');
-        }
-        const traditionData = JSON.parse(cleanResult);
-        console.log('Tradição gerada:', traditionData);
-        addWorldItem('traditions', traditionData);
-        toast.success(`Tradição "${traditionData.name}" gerada com sucesso!`);
-      } catch (parseError) {
-        console.error('Erro ao parsear JSON:', parseError);
-        console.log('Resposta original:', result);
-        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
-        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
-        const typeMatch = result.match(/"type":\s*"([^"]+)"/);
-        if (nameMatch && descriptionMatch) {
-          const traditionData = {
-            id: Date.now(),
-            name: nameMatch[1],
-            type: typeMatch ? typeMatch[1] : 'Tradição Cultural',
-            description: descriptionMatch[1],
-            origin: 'Origem ancestral',
-            practice: 'Praticada pela comunidade',
-            frequency: 'Anual',
-            createdAt: new Date().toISOString(),
-            generatedBy: aiProvider
-          };
-          addWorldItem('traditions', traditionData);
-          toast.success(`Tradição "${traditionData.name}" gerada com sucesso!`);
-        } else {
-          toast.error('A IA retornou um formato inválido.');
-        }
-      }
-    }
-  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
+    await processGeneratedElement('tradition', 'traditions');
+  }, [processGeneratedElement]);
 
   // Função para gerar região com IA
   const generateRegion = useCallback(async () => {
-    const prompt = `Crie uma região geográfica única para uma light novel.
-
-REGRAS IMPORTANTES:
-1. Responda APENAS com um JSON válido
-2. NÃO inclua texto explicativo antes ou depois do JSON
-3. NÃO use markdown ou blocos de código
-4. Use aspas duplas para strings
-5. Escape caracteres especiais nas strings
-
-Inclua:
-- Nome da região
-- Descrição geográfica detalhada
-- Tipo de clima predominante
-- Terreno característico
-- População estimada
-- Características especiais
-
-Formato exato:
-{
-  "name": "Nome da Região",
-  "description": "Descrição geográfica",
-  "climate": "Clima predominante",
-  "terrain": "Tipo de terreno",
-  "population": "População estimada",
-  "features": "Características especiais"
-}`;
-
-    const context = {
-      worldName: worldData?.name,
-      existingRegions: worldData?.regions || [],
-      locations: worldData?.locations || []
-    };
-    
-    const result = await generateWithAI('region', prompt, context);
-
-    if (result) {
-      try {
-        const cleanResult = cleanAIResponse(result);
-        if (!cleanResult) {
-          throw new Error('Resposta da IA não pôde ser limpa');
-        }
-        const regionData = JSON.parse(cleanResult);
-        console.log('Região gerada:', regionData);
-        addWorldItem('regions', regionData);
-        toast.success(`Região "${regionData.name}" gerada com sucesso!`);
-      } catch (parseError) {
-        console.error('Erro ao parsear JSON:', parseError);
-        console.log('Resposta original:', result);
-        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
-        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
-        const climateMatch = result.match(/"climate":\s*"([^"]+)"/);
-        const terrainMatch = result.match(/"terrain":\s*"([^"]+)"/);
-        if (nameMatch && descriptionMatch) {
-          const regionData = {
-            id: Date.now(),
-            name: nameMatch[1],
-            description: descriptionMatch[1],
-            climate: climateMatch ? climateMatch[1] : 'Temperado',
-            terrain: terrainMatch ? terrainMatch[1] : 'Variado',
-            population: 'Desconhecida',
-            features: 'Características únicas da região',
-            createdAt: new Date().toISOString(),
-            generatedBy: aiProvider
-          };
-          addWorldItem('regions', regionData);
-          toast.success(`Região "${regionData.name}" gerada com sucesso!`);
-        } else {
-          toast.error('A IA retornou um formato inválido.');
-        }
-      }
-    }
-  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
+    await processGeneratedElement('region', 'regions');
+  }, [processGeneratedElement]);
 
   // Função para gerar marco com IA
   const generateLandmark = useCallback(async () => {
-    const prompt = `Crie um marco/ponto de referência único para uma light novel.
-
-REGRAS IMPORTANTES:
-1. Responda APENAS com um JSON válido
-2. NÃO inclua texto explicativo antes ou depois do JSON
-3. NÃO use markdown ou blocos de código
-4. Use aspas duplas para strings
-5. Escape caracteres especiais nas strings
-
-Inclua:
-- Nome do marco
-- Tipo (montanha, ruínas, monumento, etc.)
-- Descrição detalhada
-- Importância histórica ou cultural
-- Localização aproximada
-- Características especiais
-
-Formato exato:
-{
-  "name": "Nome do Marco",
-  "type": "Tipo do marco",
-  "description": "Descrição detalhada",
-  "significance": "Importância histórica",
-  "location": "Localização",
-  "features": "Características especiais"
-}`;
-
-    const context = {
-      worldName: worldData?.name,
-      existingLandmarks: worldData?.landmarks || [],
-      regions: worldData?.regions || []
-    };
-    
-    const result = await generateWithAI('landmark', prompt, context);
-
-    if (result) {
-      try {
-        const cleanResult = cleanAIResponse(result);
-        if (!cleanResult) {
-          throw new Error('Resposta da IA não pôde ser limpa');
-        }
-        const landmarkData = JSON.parse(cleanResult);
-        console.log('Marco gerado:', landmarkData);
-        addWorldItem('landmarks', landmarkData);
-        toast.success(`Marco "${landmarkData.name}" gerado com sucesso!`);
-      } catch (parseError) {
-        console.error('Erro ao parsear JSON:', parseError);
-        console.log('Resposta original:', result);
-        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
-        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
-        const typeMatch = result.match(/"type":\s*"([^"]+)"/);
-        if (nameMatch && descriptionMatch) {
-          const landmarkData = {
-            id: Date.now(),
-            name: nameMatch[1],
-            type: typeMatch ? typeMatch[1] : 'Monumento',
-            description: descriptionMatch[1],
-            significance: 'Importante para a história local',
-            location: 'Localização estratégica',
-            features: 'Características únicas',
-            createdAt: new Date().toISOString(),
-            generatedBy: aiProvider
-          };
-          addWorldItem('landmarks', landmarkData);
-          toast.success(`Marco "${landmarkData.name}" gerado com sucesso!`);
-        } else {
-          toast.error('A IA retornou um formato inválido.');
-        }
-      }
-    }
-  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
+    await processGeneratedElement('landmark', 'landmarks');
+  }, [processGeneratedElement]);
 
   // Função para gerar recurso com IA
   const generateResource = useCallback(async () => {
-    const prompt = `Crie um recurso natural/material único para uma light novel.
-
-REGRAS IMPORTANTES:
-1. Responda APENAS com um JSON válido
-2. NÃO inclua texto explicativo antes ou depois do JSON
-3. NÃO use markdown ou blocos de código
-4. Use aspas duplas para strings
-5. Escape caracteres especiais nas strings
-
-Inclua:
-- Nome do recurso
-- Tipo (mineral, vegetal, animal, mágico, etc.)
-- Descrição das características
-- Nível de raridade
-- Principais usos e aplicações
-- Onde pode ser encontrado
-
-Formato exato:
-{
-  "name": "Nome do Recurso",
-  "type": "Tipo do recurso",
-  "description": "Características",
-  "rarity": "Nível de raridade",
-  "uses": "Principais usos",
-  "location": "Onde é encontrado"
-}`;
-
-    const context = {
-      worldName: worldData?.name,
-      existingResources: worldData?.resources || [],
-      regions: worldData?.regions || []
-    };
-    
-    const result = await generateWithAI('resource', prompt, context);
-
-    if (result) {
-      try {
-        const cleanResult = cleanAIResponse(result);
-        if (!cleanResult) {
-          throw new Error('Resposta da IA não pôde ser limpa');
-        }
-        const resourceData = JSON.parse(cleanResult);
-        console.log('Recurso gerado:', resourceData);
-        addWorldItem('resources', resourceData);
-        toast.success(`Recurso "${resourceData.name}" gerado com sucesso!`);
-      } catch (parseError) {
-        console.error('Erro ao parsear JSON:', parseError);
-        console.log('Resposta original:', result);
-        const nameMatch = result.match(/"name":\s*"([^"]+)"/);
-        const descriptionMatch = result.match(/"description":\s*"([^"]+)"/);
-        const typeMatch = result.match(/"type":\s*"([^"]+)"/);
-        if (nameMatch && descriptionMatch) {
-          const resourceData = {
-            id: Date.now(),
-            name: nameMatch[1],
-            type: typeMatch ? typeMatch[1] : 'Mineral',
-            description: descriptionMatch[1],
-            rarity: 'Comum',
-            uses: 'Múltiplos usos',
-            location: 'Distribuído pelo mundo',
-            createdAt: new Date().toISOString(),
-            generatedBy: aiProvider
-          };
-          addWorldItem('resources', resourceData);
-          toast.success(`Recurso "${resourceData.name}" gerado com sucesso!`);
-        } else {
-          toast.error('A IA retornou um formato inválido.');
-        }
-      }
-    }
-  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
+    await processGeneratedElement('resource', 'resources');
+  }, [processGeneratedElement]);
 
   // Função para gerar tecnologia com IA
   const generateTechnology = useCallback(async () => {
+    await processGeneratedElement('technology', 'technologies');
+  }, [processGeneratedElement]);
+
+  // Função antiga de tecnologia (mantida para compatibilidade)
+  const generateTechnologyOld = useCallback(async () => {
     const prompt = `Crie uma tecnologia única para uma light novel.
 
 REGRAS IMPORTANTES:
@@ -1143,9 +991,9 @@ Formato exato:
           addWorldItem('technologies', techData);
           toast.success(`Tecnologia "${techData.name}" gerada com sucesso!`);
         } else {
-          toast.error('A IA retornou um formato inválido.');
-        }
+        toast.error('A IA retornou um formato inválido.');
       }
+    }
     }
   }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
 
@@ -1215,47 +1063,16 @@ Formato exato:
           addWorldItem('governments', govData);
           toast.success(`Sistema político "${govData.name}" gerado com sucesso!`);
         } else {
-          toast.error('A IA retornou um formato inválido.');
-        }
+        toast.error('A IA retornou um formato inválido.');
       }
+    }
     }
   }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
 
   // Função para gerar economia com IA
   const generateEconomy = useCallback(async () => {
-    const prompt = `Crie um sistema econômico único para uma light novel.
-
-REGRAS IMPORTANTES:
-1. Responda APENAS com um JSON válido
-2. NÃO inclua texto explicativo antes ou depois do JSON
-3. NÃO use markdown ou blocos de código
-4. Use aspas duplas para strings
-5. Escape caracteres especiais nas strings
-
-Inclua:
-- Nome do sistema (ex: Mercantilismo de Prata)
-- Descrição do funcionamento
-- Moeda principal
-- Principais exportações e importações
-- Nível de riqueza e distribuição
-
-Formato exato:
-{
-  "name": "Nome do Sistema",
-  "description": "Funcionamento da economia",
-  "currency": "Moeda Principal",
-  "mainExports": "Principais Exportações",
-  "wealthDistribution": "Distribuição de Riqueza"
-}`;
-
-    const context = {
-      worldName: worldData?.name,
-      existingEconomies: worldData?.economies || [],
-      resources: worldData?.resources || [],
-      regions: worldData?.regions || [],
-    };
-    
-    const result = await generateWithAI('economy', prompt, context);
+    // Usa generateSmartElement para gerar economia com contexto completo
+    const result = await generateSmartElement('economy', worldData, { volumes, chapters, characters });
 
     if (result) {
       try {
@@ -1287,11 +1104,11 @@ Formato exato:
           addWorldItem('economies', ecoData);
           toast.success(`Sistema econômico "${ecoData.name}" gerado com sucesso!`);
         } else {
-          toast.error('A IA retornou um formato inválido.');
-        }
+        toast.error('A IA retornou um formato inválido.');
+              }
       }
     }
-  }, [generateWithAI, cleanAIResponse, worldData, addWorldItem, aiProvider]);
+  }, [generateSmartElement, cleanAIResponse, worldData, volumes, chapters, characters, addWorldItem, aiProvider]);
 
   // Função para geração em lote
   const generateBatch = useCallback(async (type, count = 5) => {
@@ -1612,7 +1429,7 @@ Formato exato:
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
               <Globe className="h-5 w-5 text-blue-600 mr-2" />
-              <h3 className="text-lg font-semibold text-foreground">Informações Básicas</h3>
+                          <h3 className="text-lg font-semibold text-foreground">Informações Básicas</h3>
             </div>
             <div className="flex items-center space-x-2">
               <button
@@ -1623,9 +1440,9 @@ Formato exato:
                 <Sparkles className="h-4 w-4 mr-1" />
                 {isGenerating ? 'Gerando...' : 'IA'}
               </button>
-              <button className="btn-ghost">
-                <Edit className="h-4 w-4" />
-              </button>
+            <button className="btn-ghost">
+              <Edit className="h-4 w-4" />
+            </button>
             </div>
           </div>
           
@@ -1640,7 +1457,7 @@ Formato exato:
             )}
             
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Nome do Mundo</label>
+                              <label className="block text-sm font-medium text-foreground mb-2">Nome do Mundo</label>
               <input
                 type="text"
                 value={worldData?.name || ''}
@@ -1652,7 +1469,7 @@ Formato exato:
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Descrição Geral</label>
+                              <label className="block text-sm font-medium text-foreground mb-2">Descrição Geral</label>
               <textarea
                 value={worldData?.description || ''}
                 onChange={(e) => updateWorldData({ description: e.target.value })}
@@ -1857,88 +1674,88 @@ Formato exato:
   // Renderizar geografia
   const renderGeography = () => {
     return (
-      <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
 
-              {/* Controles */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center space-x-4">
-            {/* Busca */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Buscar locais..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-background text-foreground"
-              />
-            </div>
-
-            {/* Filtro por tipo */}
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-background text-foreground"
-            >
-              <option value="all">Todos os tipos</option>
-              {locationTypes.map((type) => (
-                <option key={type.value} value={type.value}>{type.label}</option>
-              ))}
-            </select>
-
-            {/* Ordenação */}
-            <select
-              value={`${sortBy}-${sortOrder}`}
-              onChange={(e) => {
-                const [field, order] = e.target.value.split('-');
-                setSortBy(field);
-                setSortOrder(order);
-              }}
-              className="border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-background text-foreground"
-            >
-              <option value="name-asc">Nome (A-Z)</option>
-              <option value="name-desc">Nome (Z-A)</option>
-              <option value="type-asc">Tipo (A-Z)</option>
-              <option value="createdAt-desc">Mais recentes</option>
-              <option value="createdAt-asc">Mais antigos</option>
-            </select>
+      {/* Controles */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center space-x-4">
+          {/* Busca */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Buscar locais..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-background text-foreground"
+            />
           </div>
 
-          <div className="flex items-center space-x-2">
-            {/* Modo de visualização */}
-            <div className="flex items-center border border-border rounded-lg">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 ${viewMode === 'grid' ? 'bg-muted' : ''}`}
-              >
-                <Grid className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-2 ${viewMode === 'list' ? 'bg-muted' : ''}`}
-              >
-                <List className="h-4 w-4" />
-              </button>
-            </div>
+          {/* Filtro por tipo */}
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className="border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-background text-foreground"
+          >
+            <option value="all">Todos os tipos</option>
+            {locationTypes.map((type) => (
+              <option key={type.value} value={type.value}>{type.label}</option>
+            ))}
+          </select>
 
-            {/* Botão adicionar */}
-            <button
-              onClick={() => setFormType('location')}
-              className="btn-primary flex items-center"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Adicionar Local
-            </button>
-          </div>
+          {/* Ordenação */}
+          <select
+            value={`${sortBy}-${sortOrder}`}
+            onChange={(e) => {
+              const [field, order] = e.target.value.split('-');
+              setSortBy(field);
+              setSortOrder(order);
+            }}
+            className="border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-background text-foreground"
+          >
+            <option value="name-asc">Nome (A-Z)</option>
+            <option value="name-desc">Nome (Z-A)</option>
+            <option value="type-asc">Tipo (A-Z)</option>
+            <option value="createdAt-desc">Mais recentes</option>
+            <option value="createdAt-asc">Mais antigos</option>
+          </select>
         </div>
 
-        {/* Conteúdo */}
-        {activeSubTab === 'locations' && renderLocations()}
-        {activeSubTab === 'regions' && renderRegions()}
-        {activeSubTab === 'landmarks' && renderLandmarks()}
-        {activeSubTab === 'resources' && renderResources()}
+        <div className="flex items-center space-x-2">
+          {/* Modo de visualização */}
+          <div className="flex items-center border border-border rounded-lg">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 ${viewMode === 'grid' ? 'bg-muted' : ''}`}
+            >
+              <Grid className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 ${viewMode === 'list' ? 'bg-muted' : ''}`}
+            >
+              <List className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Botão adicionar */}
+          <button
+            onClick={() => setFormType('location')}
+            className="btn-primary flex items-center"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Adicionar Local
+          </button>
+        </div>
       </div>
-    );
+
+      {/* Conteúdo */}
+      {activeSubTab === 'locations' && renderLocations()}
+      {activeSubTab === 'regions' && renderRegions()}
+      {activeSubTab === 'landmarks' && renderLandmarks()}
+      {activeSubTab === 'resources' && renderResources()}
+    </div>
+  );
   };
 
   // Renderizar locais
@@ -2499,7 +2316,7 @@ Formato exato:
   // Renderizar culturas
   const renderCultures = () => {
     return (
-      <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
 
       {/* Controles */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -2589,13 +2406,13 @@ Formato exato:
         </div>
       </div>
 
-              {/* Conteúdo */}
-        {activeSubTab === 'peoples' && renderPeoples()}
-        {activeSubTab === 'languages' && renderLanguages()}
-        {activeSubTab === 'religions' && renderReligions()}
-        {activeSubTab === 'traditions' && renderTraditions()}
-      </div>
-    );
+      {/* Conteúdo */}
+      {activeSubTab === 'peoples' && renderPeoples()}
+      {activeSubTab === 'languages' && renderLanguages()}
+      {activeSubTab === 'religions' && renderReligions()}
+      {activeSubTab === 'traditions' && renderTraditions()}
+    </div>
+  );
   };
   
   // Renderizar povos
@@ -3019,15 +2836,15 @@ Formato exato:
   // Renderizar Sistemas
   const renderSystems = () => {
     return (
-      <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
 
-              {/* Conteúdo */}
-        {activeSubTab === 'magicSystems' && renderMagicSystems()}
-        {activeSubTab === 'technologies' && renderTechnologies()}
-        {activeSubTab === 'governments' && renderGovernments()}
-        {activeSubTab === 'economies' && renderEconomies()}
-      </div>
-    );
+      {/* Conteúdo */}
+      {activeSubTab === 'magicSystems' && renderMagicSystems()}
+      {activeSubTab === 'technologies' && renderTechnologies()}
+      {activeSubTab === 'governments' && renderGovernments()}
+      {activeSubTab === 'economies' && renderEconomies()}
+    </div>
+  );
   };
 
   // Renderizar Sistemas de Magia
@@ -3946,26 +3763,26 @@ Formato exato:
       {/* Conteúdo Principal */}
       <div className="flex-1 overflow-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-          {/* Header */}
+        {/* Header */}
           <div className="mb-6 sm:mb-8">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
               <div className="min-w-0">
                 <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center">
                   <Globe className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 mr-2 sm:mr-3 flex-shrink-0" />
                   <span className="truncate">Construtor de Mundo</span>
-                </h1>
+              </h1>
                 <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-                  Crie mundos ricos e detalhados para suas histórias
-                </p>
-              </div>
-              
+                Crie mundos ricos e detalhados para suas histórias
+              </p>
+            </div>
+            
               <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                {showStats && (
-                  <div className="text-right">
+              {showStats && (
+                <div className="text-right">
                     <div className="text-xl sm:text-2xl font-bold text-foreground">{worldStats.totalElements}</div>
                     <div className="text-xs sm:text-sm text-muted-foreground">elementos criados</div>
-                  </div>
-                )}
+                </div>
+              )}
                 
                 <div className="flex items-center space-x-2 sm:space-x-4">
                   <button
@@ -3975,30 +3792,30 @@ Formato exato:
                     <Brain className="h-4 w-4 mr-1 sm:mr-2" />
                     <span className="hidden sm:inline">Agente IA</span>
                   </button>
-                  
-                  <button
-                    onClick={() => setShowStats(!showStats)}
+              
+              <button
+                onClick={() => setShowStats(!showStats)}
                     className="btn-ghost p-2"
-                  >
-                    {showStats ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                  
+              >
+                {showStats ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+              
                   <button className="btn-outline flex items-center text-sm">
                     <Download className="h-4 w-4 mr-1 sm:mr-2" />
                     <span className="hidden sm:inline">Exportar</span>
-                  </button>
-                  
+              </button>
+              
                   <button className="btn-outline flex items-center text-sm">
                     <Upload className="h-4 w-4 mr-1 sm:mr-2" />
                     <span className="hidden sm:inline">Importar</span>
-                  </button>
-                </div>
-              </div>
+              </button>
             </div>
           </div>
+        </div>
+        </div>
 
-          {/* Conteúdo principal */}
-          {renderMainContent()}
+        {/* Conteúdo principal */}
+        {renderMainContent()}
         </div>
       </div>
 
