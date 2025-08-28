@@ -833,7 +833,6 @@ export class UnifiedPromptIntegration {
       'consequências': 'consequences',
       'fontes': 'sources',
       'controvérsias': 'controversies',
-      'lições': 'lessons',
       'aplicações': 'applications',
       'acesso': 'access',
       'desenvolvimento': 'development',
