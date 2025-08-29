@@ -121,9 +121,9 @@ const useStore = create(
           },
           groq: {
             apiKey: '',
-            defaultModel: 'llama3-70b-8192',
+            defaultModel: 'qwen/qwen3-32b',
             temperature: 0.7,
-            maxTokens: 2000,
+            maxTokens: 8000,
             enabled: false
           },
           custom: {

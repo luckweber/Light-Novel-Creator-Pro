@@ -4,10 +4,50 @@ export const AI_PROVIDERS = {
     name: 'OpenAI',
     baseUrl: 'https://api.openai.com/v1',
     models: {
-      'gpt-4o': { name: 'GPT-4o', maxTokens: 128000, cost: 'Alto' },
-      'gpt-4o-mini': { name: 'GPT-4o Mini', maxTokens: 128000, cost: 'Médio' },
-      'gpt-4-turbo': { name: 'GPT-4 Turbo', maxTokens: 128000, cost: 'Alto' },
-      'gpt-3.5-turbo': { name: 'GPT-3.5 Turbo', maxTokens: 16385, cost: 'Baixo' }
+      'gpt-4o': { 
+        name: 'GPT-4o', 
+        maxTokens: 128000, 
+        cost: 'Alto',
+        rateLimits: {
+          tpm: 500000,
+          rpm: 500,
+          defaultMaxTokens: 4000,
+          fallbackModels: ['gpt-4o-mini', 'gpt-3.5-turbo']
+        }
+      },
+      'gpt-4o-mini': { 
+        name: 'GPT-4o Mini', 
+        maxTokens: 128000, 
+        cost: 'Médio',
+        rateLimits: {
+          tpm: 150000,
+          rpm: 3000,
+          defaultMaxTokens: 4000,
+          fallbackModels: ['gpt-3.5-turbo']
+        }
+      },
+      'gpt-4-turbo': { 
+        name: 'GPT-4 Turbo', 
+        maxTokens: 128000, 
+        cost: 'Alto',
+        rateLimits: {
+          tpm: 300000,
+          rpm: 500,
+          defaultMaxTokens: 4000,
+          fallbackModels: ['gpt-4o-mini', 'gpt-3.5-turbo']
+        }
+      },
+      'gpt-3.5-turbo': { 
+        name: 'GPT-3.5 Turbo', 
+        maxTokens: 16385, 
+        cost: 'Baixo',
+        rateLimits: {
+          tpm: 90000,
+          rpm: 3500,
+          defaultMaxTokens: 2000,
+          fallbackModels: []
+        }
+      }
     },
     keyFormat: 'sk-...',
     website: 'https://platform.openai.com',
@@ -25,10 +65,50 @@ export const AI_PROVIDERS = {
     name: 'Anthropic',
     baseUrl: 'https://api.anthropic.com',
     models: {
-      'claude-3-5-sonnet-20241022': { name: 'Claude 3.5 Sonnet', maxTokens: 200000, cost: 'Médio' },
-      'claude-3-opus-20240229': { name: 'Claude 3 Opus', maxTokens: 200000, cost: 'Alto' },
-      'claude-3-sonnet-20240229': { name: 'Claude 3 Sonnet', maxTokens: 200000, cost: 'Médio' },
-      'claude-3-haiku-20240307': { name: 'Claude 3 Haiku', maxTokens: 200000, cost: 'Baixo' }
+      'claude-3-5-sonnet-20241022': { 
+        name: 'Claude 3.5 Sonnet', 
+        maxTokens: 200000, 
+        cost: 'Médio',
+        rateLimits: {
+          tpm: 200000,
+          rpm: 100,
+          defaultMaxTokens: 4000,
+          fallbackModels: ['claude-3-sonnet-20240229', 'claude-3-haiku-20240307']
+        }
+      },
+      'claude-3-opus-20240229': { 
+        name: 'Claude 3 Opus', 
+        maxTokens: 200000, 
+        cost: 'Alto',
+        rateLimits: {
+          tpm: 100000,
+          rpm: 50,
+          defaultMaxTokens: 4000,
+          fallbackModels: ['claude-3-5-sonnet-20241022', 'claude-3-sonnet-20240229']
+        }
+      },
+      'claude-3-sonnet-20240229': { 
+        name: 'Claude 3 Sonnet', 
+        maxTokens: 200000, 
+        cost: 'Médio',
+        rateLimits: {
+          tpm: 150000,
+          rpm: 80,
+          defaultMaxTokens: 4000,
+          fallbackModels: ['claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307']
+        }
+      },
+      'claude-3-haiku-20240307': { 
+        name: 'Claude 3 Haiku', 
+        maxTokens: 200000, 
+        cost: 'Baixo',
+        rateLimits: {
+          tpm: 300000,
+          rpm: 200,
+          defaultMaxTokens: 4000,
+          fallbackModels: []
+        }
+      }
     },
     keyFormat: 'sk-ant-...',
     website: 'https://console.anthropic.com',
@@ -46,8 +126,28 @@ export const AI_PROVIDERS = {
     name: 'Google AI',
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
     models: {
-      'gemini-1.5-pro': { name: 'Gemini 1.5 Pro', maxTokens: 2000000, cost: 'Médio' },
-      'gemini-1.5-flash': { name: 'Gemini 1.5 Flash', maxTokens: 1000000, cost: 'Baixo' }
+      'gemini-1.5-pro': { 
+        name: 'Gemini 1.5 Pro', 
+        maxTokens: 2000000, 
+        cost: 'Médio',
+        rateLimits: {
+          tpm: 1000000,
+          rpm: 100,
+          defaultMaxTokens: 4000,
+          fallbackModels: ['gemini-1.5-flash']
+        }
+      },
+      'gemini-1.5-flash': { 
+        name: 'Gemini 1.5 Flash', 
+        maxTokens: 1000000, 
+        cost: 'Baixo',
+        rateLimits: {
+          tpm: 500000,
+          rpm: 200,
+          defaultMaxTokens: 4000,
+          fallbackModels: []
+        }
+      }
     },
     keyFormat: 'AI...',
     website: 'https://ai.google.dev',
@@ -64,23 +164,122 @@ export const AI_PROVIDERS = {
   groq: {
     name: 'Groq',
     baseUrl: 'https://api.groq.com/openai/v1',
+    disabled: false, // Provedor habilitado
     models: {
-      'llama3-70b-8192': { name: 'Llama 3 70B', id: 'llama3-70b-8192', maxTokens: 8192, cost: 'Gratuito' },
-      'llama3-8b-8192': { name: 'Llama 3 8B', id: 'llama3-8b-8192', maxTokens: 8192, cost: 'Gratuito' },
-      'mixtral-8x7b-32768': { name: 'Mixtral 8x7B', id: 'mixtral-8x7b-32768', maxTokens: 32768, cost: 'Gratuito' },
-      'gemma-7b-it': { name: 'Gemma 7B', id: 'gemma-7b-it', maxTokens: 8192, cost: 'Gratuito' }
-    },
-    keyFormat: 'gsk_...',
-    website: 'https://console.groq.com',
-    description: 'Velocidade ultra-rápida com modelos gratuitos',
-    setupInstructions: [
-      'Acesse https://console.groq.com',
-      'Faça login ou crie uma conta',
-      'Vá para API Keys',
-      'Clique em "Create API Key"',
-      'Cole a chave aqui'
-    ]
-  }
+      'qwen/qwen3-32b': { 
+        name: 'Qwen 3 32B', 
+        id: 'qwen/qwen3-32b', 
+        maxTokens: 32768, 
+        cost: 'Gratuito',
+        rateLimits: {
+          tpm: 6000, // Tokens Per Minute
+          rpm: 100,  // Requests Per Minute
+          defaultMaxTokens: 1500,
+          fallbackModels: ['llama3-8b-8192', 'gemma-7b-it']
+        }
+      },
+      'llama3-70b-8192': { 
+        name: 'Llama 3 70B', 
+        id: 'llama3-70b-8192', 
+        maxTokens: 8192, 
+        cost: 'Gratuito',
+        rateLimits: {
+          tpm: 8000,
+          rpm: 150,
+          defaultMaxTokens: 2000,
+          fallbackModels: ['llama3-8b-8192', 'gemma-7b-it']
+        }
+      },
+      'llama3-8b-8192': { 
+        name: 'Llama 3 8B', 
+        id: 'llama3-8b-8192', 
+        maxTokens: 8192, 
+        cost: 'Gratuito',
+        rateLimits: {
+          tpm: 10000,
+          rpm: 200,
+          defaultMaxTokens: 1500,
+          fallbackModels: ['gemma-7b-it']
+        }
+      },
+      'mixtral-8x7b-32768': { 
+        name: 'Mixtral 8x7B', 
+        id: 'mixtral-8x7b-32768', 
+        maxTokens: 32768, 
+        cost: 'Gratuito',
+        rateLimits: {
+          tpm: 8000,
+          rpm: 120,
+          defaultMaxTokens: 1800,
+          fallbackModels: ['llama3-8b-8192', 'gemma-7b-it']
+        }
+      },
+      'gemma-7b-it': { 
+        name: 'Gemma 7B', 
+        id: 'gemma-7b-it', 
+        maxTokens: 8192, 
+        cost: 'Gratuito',
+        rateLimits: {
+          tpm: 12000,
+          rpm: 250,
+          defaultMaxTokens: 1200,
+          fallbackModels: ['llama3-8b-8192']
+        }
+      },
+      
+     },
+     keyFormat: 'gsk_...',
+     website: 'https://console.groq.com',
+     description: 'Velocidade ultra-rápida com modelos gratuitos',
+     setupInstructions: [
+       'Acesse https://console.groq.com',
+       'Faça login ou crie uma conta',
+       'Vá para API Keys',
+       'Clique em "Create API Key"',
+       'Cole a chave aqui'
+     ]
+   },
+   
+   // Exemplo de provedor desabilitado
+   cohere: {
+     name: 'Cohere',
+     baseUrl: 'https://api.cohere.ai/v1',
+     disabled: true, // Provedor desabilitado temporariamente
+     models: {
+       'command': { 
+         name: 'Command', 
+         maxTokens: 4096, 
+         cost: 'Médio',
+         rateLimits: {
+           tpm: 50000,
+           rpm: 100,
+           defaultMaxTokens: 2000,
+           fallbackModels: []
+         }
+       },
+       'command-light': { 
+         name: 'Command Light', 
+         maxTokens: 4096, 
+         cost: 'Baixo',
+         rateLimits: {
+           tpm: 100000,
+           rpm: 200,
+           defaultMaxTokens: 1500,
+           fallbackModels: []
+         }
+       }
+     },
+     keyFormat: 'cohere_...',
+     website: 'https://cohere.ai',
+     description: 'Modelos especializados em geração de texto',
+     setupInstructions: [
+       'Acesse https://cohere.ai',
+       'Faça login ou crie uma conta',
+       'Vá para API Keys',
+       'Clique em "Create API Key"',
+       'Cole a chave aqui'
+     ]
+   }
 };
 
 // Classe para gerenciar chamadas às APIs
@@ -132,6 +331,8 @@ export class AIService {
     const modelId = this.provider === 'groq' 
       ? AI_PROVIDERS.groq.models[options.model]?.id || options.model
       : options.model;
+
+    console.log(`🔧 AI Request - Provider: ${this.provider}, Model: ${modelId}, MaxTokens: ${options.maxTokens}, Temperature: ${options.temperature}`);
 
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
@@ -315,7 +516,7 @@ export const getBestModelForTask = (provider, task) => {
       // Priorizar contexto longo
       if (provider === 'anthropic') return 'claude-3-5-sonnet-20241022';
       if (provider === 'google') return 'gemini-1.5-pro';
-      if (provider === 'groq') return 'mixtral-8x7b-32768';
+      if (provider === 'groq') return 'qwen/qwen3-32b';
       return 'gpt-4-turbo';
     default:
       break;
@@ -323,6 +524,81 @@ export const getBestModelForTask = (provider, task) => {
   
   // Retornar o primeiro modelo disponível como fallback
   return models[0];
+};
+
+// Função para obter o modelo padrão de cada provedor
+export const getDefaultModel = (provider) => {
+  switch (provider) {
+    case 'openai':
+      return 'gpt-4o';
+    case 'anthropic':
+      return 'claude-3-5-sonnet-20241022';
+    case 'google':
+      return 'gemini-1.5-pro';
+    case 'groq':
+      return 'qwen/qwen3-32b'; // Novo modelo Qwen como padrão
+    default:
+      return null;
+  }
+};
+
+// Função para obter configurações de rate limit de um modelo
+export const getModelRateLimits = (provider, modelId) => {
+  const providerConfig = AI_PROVIDERS[provider];
+  if (!providerConfig || !providerConfig.models[modelId]) {
+    return null;
+  }
+  
+  return providerConfig.models[modelId].rateLimits || null;
+};
+
+// Função para obter modelos fallback de um modelo específico
+export const getModelFallbacks = (provider, modelId) => {
+  const rateLimits = getModelRateLimits(provider, modelId);
+  return rateLimits?.fallbackModels || [];
+};
+
+// Função para obter configurações otimizadas baseadas no rate limit
+export const getOptimizedModelSettings = (provider, modelId) => {
+  const rateLimits = getModelRateLimits(provider, modelId);
+  if (!rateLimits) {
+    return {
+      temperature: 0.7,
+      maxTokens: 2000
+    };
+  }
+  
+  return {
+    temperature: 0.7,
+    maxTokens: rateLimits.defaultMaxTokens || 2000,
+    rateLimits: rateLimits
+  };
+};
+
+// Função para verificar se um modelo está próximo do rate limit
+export const checkRateLimitStatus = (provider, modelId, currentUsage) => {
+  const rateLimits = getModelRateLimits(provider, modelId);
+  if (!rateLimits) {
+    return { status: 'unknown', percentage: 0 };
+  }
+  
+  const tpmPercentage = (currentUsage.tokens || 0) / rateLimits.tpm * 100;
+  const rpmPercentage = (currentUsage.requests || 0) / rateLimits.rpm * 100;
+  
+  const maxPercentage = Math.max(tpmPercentage, rpmPercentage);
+  
+  let status = 'safe';
+  if (maxPercentage > 90) status = 'critical';
+  else if (maxPercentage > 80) status = 'warning';
+  else if (maxPercentage > 60) status = 'moderate';
+  
+  return {
+    status,
+    percentage: maxPercentage,
+    tpmPercentage,
+    rpmPercentage,
+    limits: rateLimits
+  };
 };
 
 export default AIService;
