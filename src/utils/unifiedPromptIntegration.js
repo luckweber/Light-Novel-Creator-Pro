@@ -4,6 +4,7 @@
 import { BASE_PROMPTS, PromptUtils } from './promptBank';
 import { PromptManager, DynamicPromptGenerator, PromptTemplate } from './promptTools';
 import { cleanAIResponse as cleanResponseHelper, cleanAIResponseSync } from './cleanAIResponse';
+import { SchemaUtils } from '../data/worldBuilderSchemas';
 
 export class UnifiedPromptIntegration {
   constructor(worldData, aiService) {
@@ -1040,354 +1041,136 @@ export class UnifiedPromptIntegration {
     return hasChanges ? converted : null;
   }
 
-  // Métodos de fallback (mantidos do WorldBuilder original)
+  // Métodos de fallback usando esquemas centralizados
   createFallbackLocation(result) {
-    return {
-      name: result?.name || 'Local Gerado',
-      type: result?.type || 'local',
-      description: result?.description || 'Um local interessante gerado pela IA.',
-      climate: result?.climate || 'Temperado',
-      population: result?.population || 'Variável',
-      culture: result?.culture || 'Diversa',
-      government: result?.government || 'Variado',
-      economy: result?.economy || 'Mista',
-      pointsOfInterest: result?.pointsOfInterest || ['Ponto de Interesse'],
-      atmosphere: result?.atmosphere || 'Misteriosa',
-      secrets: result?.secrets || 'Segredos ocultos',
-      generatedBy: 'AI',
-      createdAt: new Date().toISOString()
-    };
+    return this.createFallbackFromSchema('location', result);
   }
 
   createFallbackRegion(result) {
+    return this.createFallbackFromSchema('region', result);
+  }
+
+  // Método genérico para criar fallbacks usando esquemas
+  createFallbackFromSchema(itemType, result) {
+    const emptyItem = SchemaUtils.createEmptyItem(itemType);
+    if (!emptyItem) return this.createBasicFallback(itemType, result);
+    
+    // Preenche com dados do resultado ou valores padrão
+    const filledItem = { ...emptyItem };
+    
+    // Mapeia campos comuns
+    const commonFields = ['name', 'type', 'description'];
+    commonFields.forEach(field => {
+      if (result?.[field]) {
+        filledItem[field] = result[field];
+      }
+    });
+    
+    // Adiciona campos específicos do resultado
+    if (result) {
+      Object.keys(result).forEach(key => {
+        if (key in emptyItem) {
+          filledItem[key] = result[key];
+        }
+      });
+    }
+    
+    return filledItem;
+  }
+
+  // Método de fallback básico quando o esquema não é encontrado
+  createBasicFallback(itemType, result) {
     return {
-      name: result?.name || 'Região Gerada',
-      type: result?.type || 'Montanhoso',
-      climate: result?.climate || 'Temperado',
-      seasonalVariations: result?.seasonalVariations || 'Estações bem definidas',
-      terrain: result?.terrain || 'Montanhas e vales',
-      naturalResources: result?.naturalResources || 'Minérios e madeira',
-      population: result?.population || '10.000',
-      distribution: result?.distribution || 'Distribuída em assentamentos',
-      settlements: result?.settlements || 'Cidades e aldeias',
-      tradeRoutes: result?.tradeRoutes || 'Rotas comerciais importantes',
-      uniqueFeatures: result?.uniqueFeatures || 'Características únicas',
-      dangers: result?.dangers || 'Perigos naturais',
-      strategicImportance: result?.strategicImportance || 'Importância estratégica',
-      conflicts: result?.conflicts || 'Conflitos regionais',
-      floraFauna: result?.floraFauna || 'Flora e fauna diversa',
-      waterResources: result?.waterResources || 'Rios e lagos',
-      connectivity: result?.connectivity || 'Bem conectada',
+      name: result?.name || `${itemType} Gerado`,
+      description: result?.description || `Um ${itemType} interessante gerado pela IA.`,
       generatedBy: 'AI',
       createdAt: new Date().toISOString()
     };
   }
 
   createFallbackLandmark(result) {
-    return {
-      name: result?.name || 'Marco Importante',
-      type: result?.type || 'Natural',
-      description: result?.description || 'Um marco significativo no mundo',
-      significance: result?.significance || 'Importância histórica ou cultural',
-      location: result?.location || 'Localização específica',
-      history: result?.history || 'História rica e antiga',
-      features: result?.features || 'Características únicas',
-      accessibility: result?.accessibility || 'Acesso variado',
-      legends: result?.legends || 'Lendas associadas',
-      visitors: result?.visitors || 'Visitantes frequentes',
-      generatedBy: 'AI',
-      createdAt: new Date().toISOString()
-    };
+    return this.createFallbackFromSchema('landmark', result);
   }
 
   createFallbackResource(result) {
-    return {
-      name: result?.name || 'Recurso Natural',
-      type: result?.type || 'Mineral',
-      description: result?.description || 'Um recurso valioso do mundo',
-      rarity: result?.rarity || 'Raro',
-      uses: result?.uses || 'Múltiplos usos',
-      location: result?.location || 'Localização específica',
-      extraction: result?.extraction || 'Método de extração',
-      value: result?.value || 'Alto valor',
-      trade: result?.trade || 'Comercializado',
-      regulations: result?.regulations || 'Regulamentações',
-      impact: result?.impact || 'Impacto ambiental',
-      generatedBy: 'AI',
-      createdAt: new Date().toISOString()
-    };
+    return this.createFallbackFromSchema('resource', result);
   }
 
   createFallbackLanguage(result) {
-    return {
-      name: result?.name || 'Idioma Gerado',
-      family: result?.family || 'Indo-Europeu',
-      speakers: result?.speakers || 'Falantes nativos da região',
-      script: result?.script || 'Sistema de escrita único',
-      examples: result?.examples || {
-        hello: 'Olá',
-        goodbye: 'Adeus',
-        water: 'Água'
-      },
-      dialects: result?.dialects || {
-        'Dialeto Principal': 'Caracterizado por pronúncia clara',
-        'Dialeto Regional': 'Influenciado por culturas locais'
-      },
-      culturalInfluence: result?.culturalInfluence || 'Influenciado pela cultura local',
-      socialStatus: result?.socialStatus || 'Idioma respeitado na sociedade',
-      evolution: result?.evolution || 'Evoluiu ao longo dos séculos',
-      generatedBy: 'AI',
-      createdAt: new Date().toISOString()
-    };
+    return this.createFallbackFromSchema('language', result);
   }
 
   createFallbackPeople(result) {
-    return {
-      name: result?.name || 'Povo Gerado',
-      physicalTraits: result?.physicalTraits || 'Características únicas',
-      culture: result?.culture || 'Cultura rica e diversa',
-      socialStructure: result?.socialStructure || 'Estrutura social complexa',
-      specialAbilities: result?.specialAbilities || 'Habilidades especiais',
-      relationships: result?.relationships || 'Relacionamentos complexos',
-      history: result?.history || 'História rica e antiga',
-      values: result?.values || 'Valores tradicionais',
-      territory: result?.territory || 'Território vasto',
-      population: result?.population || 'População significativa',
-      language: result?.language || 'Idioma único',
-      religion: result?.religion || 'Sistema religioso próprio',
-      technology: result?.technology || 'Tecnologia avançada',
-      economy: result?.economy || 'Economia próspera',
-      conflicts: result?.conflicts || 'Conflitos internos',
-      generatedBy: 'AI',
-      createdAt: new Date().toISOString()
-    };
+    return this.createFallbackFromSchema('people', result);
   }
 
   createFallbackEvent(result) {
-    return {
-      name: result?.name || 'Evento Histórico',
-      date: result?.date || 'Data antiga',
-      location: result?.location || 'Local histórico',
-      characters: result?.characters || 'Personagens importantes',
-      description: result?.description || 'Evento significativo na história',
-      causes: result?.causes || 'Causas complexas',
-      consequences: result?.consequences || 'Consequências duradouras',
-      impact: result?.impact || 'Impacto histórico',
-      legacy: result?.legacy || 'Legado importante',
-      sources: result?.sources || 'Fontes históricas',
-      controversies: result?.controversies || 'Controvérsias',
-      lessons: result?.lessons || 'Lições aprendidas',
-      generatedBy: 'AI',
-      createdAt: new Date().toISOString()
-    };
+    return this.createFallbackFromSchema('event', result);
   }
 
   createFallbackEra(result) {
-    return {
-      name: result?.name || 'Era Histórica',
-      startYear: result?.startYear || 'Início da era',
-      endYear: result?.endYear || 'Fim da era',
-      description: result?.description || 'Período histórico significativo',
-      characteristics: result?.characteristics || 'Características da era',
-      majorEvents: result?.majorEvents || 'Eventos principais',
-      keyFigures: result?.keyFigures || 'Figuras importantes',
-      culturalChanges: result?.culturalChanges || 'Mudanças culturais',
-      technologicalAdvances: result?.technologicalAdvances || 'Avanços tecnológicos',
-      socialStructures: result?.socialStructures || 'Estruturas sociais',
-      conflicts: result?.conflicts || 'Conflitos da era',
-      achievements: result?.achievements || 'Conquistas importantes',
-      legacy: result?.legacy || 'Legado da era',
-      transition: result?.transition || 'Transição para próxima era',
-      generatedBy: 'AI',
-      createdAt: new Date().toISOString()
-    };
+    return this.createFallbackFromSchema('era', result);
   }
 
   createFallbackMagicSystem(result) {
-    return {
-      name: result?.name || 'Sistema Mágico',
-      origin: result?.origin || 'Origem misteriosa',
-      rules: result?.rules || 'Regras complexas',
-      types: result?.types || 'Tipos variados',
-      cost: result?.cost || 'Custo significativo',
-      users: result?.users || 'Usuários selecionados',
-      artifacts: result?.artifacts || 'Artefatos poderosos',
-      powerPlaces: result?.powerPlaces || 'Locais de poder',
-      organizations: result?.organizations || 'Organizações mágicas',
-      relationship: result?.relationship || 'Relação com tecnologia',
-      mysteries: result?.mysteries || 'Mistérios profundos',
-      generatedBy: 'AI',
-      createdAt: new Date().toISOString()
-    };
+    return this.createFallbackFromSchema('magicSystem', result);
   }
 
   createFallbackTradition(result) {
-    return {
-      name: result?.name || 'Tradição Cultural',
-      type: result?.type || 'Tipo de tradição',
-      origin: result?.origin || 'Origem histórica',
-      practice: result?.practice || 'Como é praticada',
-      meaning: result?.meaning || 'Significado cultural',
-      participants: result?.participants || 'Quem participa',
-      frequency: result?.frequency || 'Quando ocorre',
-      symbols: result?.symbols || 'Elementos simbólicos',
-      variations: result?.variations || 'Variações regionais',
-      importance: result?.importance || 'Importância social',
-      evolution: result?.evolution || 'Evolução histórica',
-      conflicts: result?.conflicts || 'Conflitos ou controvérsias',
-      generatedBy: 'AI',
-      createdAt: new Date().toISOString()
-    };
+    return this.createFallbackFromSchema('tradition', result);
   }
 
   createFallbackReligion(result) {
-    return {
-      name: result?.name || 'Religião',
-      type: result?.type || 'Tipo religioso',
-      deities: result?.deities || 'Divindades',
-      dogmas: result?.dogmas || 'Dogmas sagrados',
-      rituals: result?.rituals || 'Rituais importantes',
-      hierarchy: result?.hierarchy || 'Hierarquia religiosa',
-      sacredPlaces: result?.sacredPlaces || 'Locais sagrados',
-      sacredTexts: result?.sacredTexts || 'Textos sagrados',
-      festivals: result?.festivals || 'Festivais religiosos',
-      relationships: result?.relationships || 'Relações inter-religiosas',
-      impact: result?.impact || 'Impacto social',
-      secrets: result?.secrets || 'Segredos sagrados',
-      generatedBy: 'AI',
-      createdAt: new Date().toISOString()
-    };
+    return this.createFallbackFromSchema('religion', result);
   }
 
   createFallbackTechnology(result) {
-    return {
-      name: result?.name || 'Tecnologia',
-      category: result?.category || 'Categoria tecnológica',
-      principle: result?.principle || 'Princípio de funcionamento',
-      applications: result?.applications || 'Aplicações práticas',
-      limitations: result?.limitations || 'Limitações técnicas',
-      impact: result?.impact || 'Impacto na sociedade',
-      access: result?.access || 'Controle de acesso',
-      cost: result?.cost || 'Custo elevado',
-      development: result?.development || 'Potencial de desenvolvimento',
-      risks: result?.risks || 'Riscos associados',
-      magicRelation: result?.magicRelation || 'Relação com magia',
-      innovation: result?.innovation || 'Inovação significativa',
-      generatedBy: 'AI',
-      createdAt: new Date().toISOString()
-    };
+    return this.createFallbackFromSchema('technology', result);
   }
 
   createFallbackGovernment(result) {
-    return {
-      name: result?.name || 'Sistema Governamental',
-      type: result?.type || 'Tipo de governo',
-      structure: result?.structure || 'Estrutura de poder',
-      leaders: result?.leaders || 'Líderes políticos',
-      legalSystem: result?.legalSystem || 'Sistema legal',
-      externalRelations: result?.externalRelations || 'Relações externas',
-      internalConflicts: result?.internalConflicts || 'Conflitos internos',
-      policies: result?.policies || 'Políticas principais',
-      factions: result?.factions || 'Facções políticas',
-      alliances: result?.alliances || 'Alianças e tratados',
-      intrigues: result?.intrigues || 'Intrigas políticas',
-      figures: result?.figures || 'Figuras importantes',
-      movements: result?.movements || 'Movimentos políticos',
-      generatedBy: 'AI',
-      createdAt: new Date().toISOString()
-    };
+    return this.createFallbackFromSchema('government', result);
   }
 
   createFallbackEconomy(result) {
-    return {
-      name: result?.name || 'Sistema Econômico',
-      type: result?.type || 'Tipo de economia',
-      currency: result?.currency || 'Sistema monetário',
-      sectors: result?.sectors || 'Setores econômicos',
-      tradeRoutes: result?.tradeRoutes || 'Rotas comerciais',
-      socialClasses: result?.socialClasses || 'Classes sociais',
-      taxes: result?.taxes || 'Sistema tributário',
-      organizations: result?.organizations || 'Organizações comerciais',
-      problems: result?.problems || 'Problemas econômicos',
-      opportunities: result?.opportunities || 'Oportunidades',
-      resources: result?.resources || 'Recursos principais',
-      markets: result?.markets || 'Mercados importantes',
-      guilds: result?.guilds || 'Guildas comerciais',
-      generatedBy: 'AI',
-      createdAt: new Date().toISOString()
-    };
+    return this.createFallbackFromSchema('economy', result);
   }
 
   createFallbackCharacter(context = {}) {
-    const role = context.role || 'protagonist';
-    const region = context.region || 'Região Central';
-    
-    return {
-      name: 'Personagem Gerado',
-      role: role,
-      age: 18,
-      gender: 'Não especificado',
-      appearance: 'Aparência única e memorável',
-      personality: 'Personalidade complexa e interessante',
-      background: 'Histórico rico e detalhado',
-      motivation: 'Motivação clara e forte',
-      goals: 'Objetivos bem definidos',
-      fears: 'Medos e fraquezas',
-      strengths: 'Forças e habilidades',
-      weaknesses: 'Fraquezas e limitações',
-      relationships: 'Relacionamentos importantes',
-      development: 'Arco de desenvolvimento',
-      region: region,
-      occupation: 'Ocupação ou função',
-      skills: 'Habilidades especiais',
-      equipment: 'Equipamentos e itens',
-      secrets: 'Segredos e mistérios',
-      quotes: 'Frases memoráveis',
-      notes: 'Notas adicionais'
-    };
+    return this.createFallbackFromSchema('character', context);
   }
 
   createFallbackLoreItem(type, context = {}) {
-    const baseLore = {
-      name: `Item de Lore - ${type}`,
-      type: type,
-      description: 'Descrição detalhada do item de lore',
-      origin: 'Origem misteriosa',
-      significance: 'Significado importante',
-      connections: 'Conexões com outros elementos',
-      secrets: 'Segredos ocultos',
-      impact: 'Impacto no mundo',
-      variations: 'Variações e interpretações',
-      sources: 'Fontes de informação',
-      notes: 'Notas adicionais'
-    };
-
+    // Cria o item base usando o esquema
+    const baseItem = this.createFallbackFromSchema('loreItem', context);
+    
+    // Adiciona o tipo específico
+    baseItem.type = type;
+    baseItem.name = `Item de Lore - ${type}`;
+    
     // Adiciona campos específicos baseados no tipo
     switch (type) {
       case 'legend':
-        return {
-          ...baseLore,
-          characters: 'Personagens da lenda',
-          moral: 'Moral da história',
-          locations: 'Locais mencionados'
-        };
+        baseItem.characters = 'Personagens da lenda';
+        baseItem.moral = 'Moral da história';
+        baseItem.locations = 'Locais mencionados';
+        break;
       case 'artifact':
-        return {
-          ...baseLore,
-          power: 'Poderes especiais',
-          history: 'História do artefato',
-          location: 'Localização atual'
-        };
+        baseItem.power = 'Poderes especiais';
+        baseItem.history = 'História do artefato';
+        baseItem.location = 'Localização atual';
+        break;
       case 'ritual':
-        return {
-          ...baseLore,
-          steps: 'Passos do ritual',
-          requirements: 'Requisitos para execução',
-          effects: 'Efeitos do ritual'
-        };
+        baseItem.steps = 'Passos do ritual';
+        baseItem.requirements = 'Requisitos para execução';
+        baseItem.effects = 'Efeitos do ritual';
+        break;
       default:
-        return baseLore;
+        // Mantém os valores padrão do esquema
+        break;
     }
+    
+    return baseItem;
   }
 
   logJSONDebugInfo(jsonString, error) {
